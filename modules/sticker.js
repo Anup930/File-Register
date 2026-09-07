@@ -24,8 +24,9 @@ const StickerModule = (() => {
     setTimeout(() => {
       try {
         if (typeof JsBarcode !== 'undefined') {
-          JsBarcode('#barcode-spine', file.fileNumber, { format: 'CODE39', width: 1.2, height: 40, displayValue: false });
-          JsBarcode('#barcode-cover', file.fileNumber, { format: 'CODE39', width: 1.5, height: 35, displayValue: false });
+          // Use CODE128 (denser than CODE39) and slightly thinner lines so it fits
+          JsBarcode('#barcode-spine', file.fileNumber, { format: 'CODE128', width: 1.2, height: 26, displayValue: false, margin: 0 });
+          JsBarcode('#barcode-cover', file.fileNumber, { format: 'CODE128', width: 1.3, height: 35, displayValue: false, margin: 0 });
         }
       } catch(e) { console.warn('Barcode generation failed', e); }
     }, 100);
@@ -57,7 +58,11 @@ const StickerModule = (() => {
             <div class="s-filenum">${fn}</div>
             <div class="s-client">${client}</div>
             <div class="s-details">${details}</div>
-            <svg id="barcode-spine"></svg>
+            <div style="height: 260px; width: 100%; display: flex; align-items: center; justify-content: center;">
+              <div style="transform: rotate(-90deg); transform-origin: center; display: flex; align-items: center; justify-content: center;">
+                <svg id="barcode-spine"></svg>
+              </div>
+            </div>
           </div>
         </div>
 
@@ -70,7 +75,9 @@ const StickerModule = (() => {
             <div class="c-row"><span class="c-key">Category:</span><span class="c-val">${cat} / ${subcat}</span></div>
             <div class="c-row"><span class="c-key">Details:</span><span class="c-val">${details}</span></div>
             ${notes ? `<div class="c-row"><span class="c-key">Remarks:</span><span class="c-val">${notes}</span></div>` : ''}
-            <svg id="barcode-cover"></svg>
+            <div style="margin-top:auto; display:flex; justify-content:center;">
+              <svg id="barcode-cover"></svg>
+            </div>
           </div>
         </div>
 
