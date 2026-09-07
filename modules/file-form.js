@@ -253,6 +253,16 @@ const FileFormModule = (() => {
                   <label class="form-label">Bin Location No.</label>
                   <div id="wrap-binLocation"></div>
                 </div>
+                <!-- Held By -->
+                <div class="form-group">
+                  <label class="form-label">Held By</label>
+                  <input type="text" class="form-control" id="field-heldBy" value="${v('heldBy')}" placeholder="Person holding the file (if checked out)">
+                </div>
+                <!-- Due Date -->
+                <div class="form-group">
+                  <label class="form-label">Due Date</label>
+                  <input type="date" class="form-control" id="field-dueDate" value="${f.dueDate ? new Date(f.dueDate).toISOString().split('T')[0] : ''}">
+                </div>
                 <!-- Tags -->
                 <div class="form-group">
                   <label class="form-label">Tags <span style="font-weight:400;color:var(--gray-500)">(comma-separated)</span></label>
@@ -378,6 +388,8 @@ const FileFormModule = (() => {
       colour:           get('field-colour'),
       binLocation:      get('field-binLocation'),
       status:           get('field-status'),
+      heldBy:           get('field-heldBy'),
+      dueDate:          get('field-dueDate'),
       tags:             get('field-tags'),
       relatedDocs:      get('field-relatedDocs'),
       notes:            get('field-notes'),

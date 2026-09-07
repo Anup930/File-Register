@@ -50,7 +50,8 @@ const ImportModule = (() => {
         </div>
         <p style="text-align:center;color:var(--gray-500);margin:8px 0">— or paste CSV text below —</p>
         <textarea class="form-control" id="csv-paste" rows="6" placeholder="Paste CSV content here…"></textarea>
-        <div style="margin-top:12px;display:flex;justify-content:flex-end">
+        <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center">
+          <a href="#" id="btn-download-sample" style="font-size:0.85rem">↓ Download Sample CSV</a>
           <button class="btn btn-primary" id="btn-parse-csv">Parse CSV →</button>
         </div>
       </div>`;
@@ -217,6 +218,19 @@ const ImportModule = (() => {
       const text = paste?.value.trim();
       if (!text) { toast('Please paste CSV content or upload a file', 'warning'); return; }
       processCSVText(text, container);
+    });
+
+    container.querySelector('#btn-download-sample')?.addEventListener('click', (e) => {
+      e.preventDefault();
+      const headers = ['Client Name', 'Category', 'Sub-Category', 'Details', 'Location', 'Entity', 'Business Vertical', 'File Type', 'Colour', 'Bin Location', 'Notes'];
+      const sampleRow = ['Gretex', 'Legal', 'Agreements', 'NDA 2026', 'Mumbai', 'GCSL', 'Merchant Banker', 'Flat File', 'Red', 'Rack 1', 'Urgent'];
+      const csv = headers.join(',') + '\n' + sampleRow.map(v => '"' + v + '"').join(',');
+      const blob = new Blob([csv], { type: 'text/csv' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'sample-import.csv';
+      a.click();
+      URL.revokeObjectURL(a.href);
     });
   }
 
