@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>File Register — Gretex Group</title>
+  <link rel="stylesheet" href="style.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+</head>
+<body>
+
+<!-- ── Name Prompt ──────────────────────────────────────────── -->
+<div id="name-prompt" style="display:none">
+  <div class="name-prompt-box">
+    <div class="logo">📂</div>
+    <h2>Welcome to File Register</h2>
+    <p>Please enter your name. This will be used to attribute your actions in the activity log.</p>
+    <input type="text" id="name-input" placeholder="e.g. Priya Sharma" maxlength="60" autocomplete="name">
+    <button class="btn btn-primary" id="name-submit-btn">Continue →</button>
+  </div>
+</div>
+
+<!-- ── App Shell ─────────────────────────────────────────────── -->
+<div id="app">
+
+  <!-- Sidebar -->
+  <nav id="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-icon">📂</div>
+      <div class="logo-text">
+        <strong>File Register</strong>
+        <span>Gretex Group</span>
+      </div>
+    </div>
+
+    <div class="sidebar-nav">
+      <div class="nav-section-label">Main</div>
+      <a href="#dashboard" class="nav-link" data-page="dashboard">
+        <span class="nav-icon">🏠</span> Dashboard
+      </a>
+      <a href="#register" class="nav-link" data-page="register">
+        <span class="nav-icon">📋</span> Register
+      </a>
+      <a href="#add" class="nav-link" data-page="add">
+        <span class="nav-icon">➕</span> Add File
+      </a>
+
+      <div class="nav-section-label">Tools</div>
+      <a href="#import" class="nav-link" data-page="import">
+        <span class="nav-icon">📥</span> Bulk Import
+      </a>
+      <a href="#settings" class="nav-link" data-page="settings">
+        <span class="nav-icon">⚙️</span> Master Data
+      </a>
+    </div>
+
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="user-avatar" id="user-avatar">?</div>
+        <div class="user-info">
+          <strong id="user-name-display">—</strong>
+          <br>
+          <button class="btn-change-user" id="btn-change-user">Change name</button>
+        </div>
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main -->
+  <div id="main">
+    <header id="topbar">
+      <button id="sidebar-toggle" class="btn btn-ghost btn-icon" style="display:none">☰</button>
+      <span class="topbar-title" id="topbar-title">Dashboard</span>
+      <div class="topbar-actions" id="topbar-actions"></div>
+    </header>
+
+    <div id="content">
+      <div class="page-loading">
+        <div class="spinner"></div>
+        <span>Loading…</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- Scripts -->
+<script src="app.js"></script>
+<script src="modules/dashboard.js"></script>
+<script src="modules/register.js"></script>
+<script src="modules/file-form.js"></script>
+<script src="modules/checkout.js"></script>
+<script src="modules/masters.js"></script>
+<script src="modules/sticker.js"></script>
+<script src="modules/import.js"></script>
+
+</body>
+</html>
