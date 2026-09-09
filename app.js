@@ -91,6 +91,7 @@ function navigate(hash) {
     dashboard: 'Dashboard',
     register:  'File Register',
     add:       'Add New File',
+    stickers:  'Print Stickers',
     import:    'Bulk Import',
     settings:  'Master Data',
   };
@@ -108,6 +109,7 @@ function navigate(hash) {
     case 'dashboard':     DashboardModule.render(content, topbarActions); break;
     case 'register':      RegisterModule.render(content, topbarActions); break;
     case 'add':           FileFormModule.renderAdd(content, topbarActions); break;
+    case 'stickers':      StickerModule.renderPrintPage(content, topbarActions); break;
     case 'import':        ImportModule.render(content, topbarActions); break;
     case 'settings':      MastersModule.render(content, topbarActions); break;
     default:

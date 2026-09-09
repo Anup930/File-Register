@@ -496,6 +496,29 @@ tbody td { padding: 10px 14px; color: var(--gray-800); vertical-align: middle; }
 .sticker-cover .c-val { color: #111; flex: 1; }
 .sticker-cover svg { margin-top: auto; display: block; }
 
+/* ── Bulk Print Stickers ─────────────────────────────────────── */
+.sheet-preview-wrap {
+  background: white; border-radius: var(--radius); box-shadow: var(--shadow);
+  padding: 24px; margin: 0 auto;
+}
+.sheet-card { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.sheet-item-card { border: 1px dashed #ccc; padding: 15px; border-radius: 4px; display: flex; flex-direction: column; }
+.sc-fn { font-family: 'Roboto Mono', monospace; font-weight: bold; font-size: 16px; margin-bottom: 8px; }
+.sc-barcode { margin-bottom: 12px; }
+.sc-barcode svg { max-width: 100%; height: auto; }
+.sc-row { display: flex; font-size: 12px; margin-bottom: 4px; }
+.sc-key { width: 100px; font-weight: 600; color: #444; }
+.sc-val { flex: 1; color: #111; }
+
+.sheet-tabular { display: flex; flex-direction: column; }
+.sheet-item-tabular { display: flex; border: 1px dashed #ccc; margin-bottom: -1px; align-items: center; }
+.st-col { padding: 12px; }
+.st-barcode { width: 35%; border-right: 1px dashed #eee; text-align: left; }
+.st-mid { width: 35%; border-right: 1px dashed #eee; }
+.st-fn { font-family: 'Roboto Mono', monospace; font-weight: bold; font-size: 14px; margin-bottom: 4px; }
+.st-client { font-size: 12px; color: #444; }
+.st-details { width: 30%; font-size: 12px; color: #444; }
+
 /* ── Import Wizard ───────────────────────────────────────────── */
 .import-step { display: none; }
 .import-step.active { display: block; }
