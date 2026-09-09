@@ -501,7 +501,7 @@ tbody td { padding: 10px 14px; color: var(--gray-800); vertical-align: middle; }
   background: white; border-radius: var(--radius); box-shadow: var(--shadow);
   padding: 24px; margin: 0 auto;
 }
-.sheet-card { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+.sheet-card { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
 
 @keyframes hoverSuperZoom {
   0% { transform: scale(1.03); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
@@ -518,6 +518,16 @@ tbody td { padding: 10px 14px; color: var(--gray-800); vertical-align: middle; }
   position: relative;
   z-index: 1;
   transition: transform 0.2s ease, box-shadow 0.2s ease, z-index 0s;
+}
+
+.card-checkbox {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  width: 20px;
+  height: 20px;
+  cursor: pointer;
+  z-index: 2;
 }
 
 /* Normal hover (scale 1.03) then 2s delay before Super Zoom (scale 1.5) */
