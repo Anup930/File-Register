@@ -502,7 +502,32 @@ tbody td { padding: 10px 14px; color: var(--gray-800); vertical-align: middle; }
   padding: 24px; margin: 0 auto;
 }
 .sheet-card { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
-.sheet-item-card { border: 1px dashed #ccc; padding: 15px; border-radius: 4px; display: flex; flex-direction: column; }
+
+@keyframes hoverSuperZoom {
+  0% { transform: scale(1.03); box-shadow: 0 10px 20px rgba(0,0,0,0.1); }
+  100% { transform: scale(1.5); box-shadow: 0 30px 60px rgba(0,0,0,0.3); }
+}
+
+.sheet-item-card { 
+  border: 1px dashed #ccc; 
+  padding: 15px; 
+  border-radius: 4px; 
+  display: flex; 
+  flex-direction: column;
+  background: white;
+  position: relative;
+  z-index: 1;
+  transition: transform 0.2s ease, box-shadow 0.2s ease, z-index 0s;
+}
+
+/* Normal hover (scale 1.03) then 2s delay before Super Zoom (scale 1.5) */
+.sheet-item-card:hover {
+  z-index: 100;
+  transform: scale(1.03);
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+  animation: hoverSuperZoom 0.4s ease 2s forwards;
+}
+
 .sc-fn { font-family: 'Roboto Mono', monospace; font-weight: bold; font-size: 16px; margin-bottom: 8px; }
 .sc-barcode { margin-bottom: 12px; }
 .sc-barcode svg { max-width: 100%; height: auto; }
