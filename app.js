@@ -338,23 +338,243 @@ function fmtDateTime(d) {
   } catch { return d; }
 }
 
-// ── SMART SELECT WITH ADD ──────────────────────────────────────
-// Renders a <select> with an add button; calls onAdd(name) -> Promise<{name,code}>
+function escapeHTML(str) {
+  return String(str || '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+// ── SMART SELECT WITH ADD & SEARCH ─────────────────────────────
+// Renders a custom searchable select with sticky search filter at top + add button
 function renderSmartSelect({ id, options, value, placeholder, onAdd, allowCustom = false }) {
   const wrap = document.createElement('div');
   wrap.className = 'select-with-add';
-  wrap.innerHTML = `
-    <select class="form-control" id="${id}">
-      <option value="">— ${placeholder} —</option>
-      ${options.map(o => {
-        const v = typeof o === 'string' ? o : o.name;
-        return `<option value="${v}" ${v === value ? 'selected' : ''}>${v}</option>`;
-      }).join('')}
-    </select>
-    <button type="button" class="btn-add-option" title="Add new ${placeholder}">＋</button>
+
+  // Underlying <select id="${id}"> ensures backward compatibility with all form handlers & validation
+  const select = document.createElement('select');
+  select.id = id;
+  select.style.display = 'none';
+
+  const defaultOpt = document.createElement('option');
+  defaultOpt.value = '';
+  defaultOpt.textContent = `— ${placeholder} —`;
+  select.appendChild(defaultOpt);
+
+  options.forEach(o => {
+    const v = typeof o === 'string' ? o : o.name;
+    const opt = document.createElement('option');
+    opt.value = v;
+    opt.textContent = v;
+    if (v === value) opt.selected = true;
+    select.appendChild(opt);
+  });
+
+  // Custom Searchable Dropdown Wrapper
+  const dropdownWrap = document.createElement('div');
+  dropdownWrap.className = 'custom-searchable-select';
+
+  // Trigger button
+  const trigger = document.createElement('div');
+  trigger.className = 'custom-select-trigger';
+  trigger.tabIndex = 0;
+
+  const selectedSpan = document.createElement('span');
+  selectedSpan.className = 'custom-select-label';
+  selectedSpan.textContent = value || `— ${placeholder} —`;
+  if (!value) selectedSpan.classList.add('is-placeholder');
+
+  const arrow = document.createElement('span');
+  arrow.className = 'custom-select-arrow';
+  arrow.textContent = '▾';
+
+  trigger.appendChild(selectedSpan);
+  trigger.appendChild(arrow);
+
+  // Dropdown Panel
+  const panel = document.createElement('div');
+  panel.className = 'custom-select-panel';
+  panel.style.display = 'none';
+
+  // Search Input Header
+  const searchWrap = document.createElement('div');
+  searchWrap.className = 'custom-select-search-wrap';
+  searchWrap.innerHTML = `
+    <span class="custom-select-search-icon">🔍</span>
+    <input type="text" class="custom-select-search-input" placeholder="Search ${placeholder}…">
+    <button type="button" class="custom-select-search-clear" style="display:none">✕</button>
   `;
-  const select = wrap.querySelector('select');
-  const addBtn = wrap.querySelector('.btn-add-option');
+  const searchInput = searchWrap.querySelector('.custom-select-search-input');
+  const searchClear = searchWrap.querySelector('.custom-select-search-clear');
+
+  // Options List
+  const optionsList = document.createElement('div');
+  optionsList.className = 'custom-select-options';
+
+  function renderOptions(filterText = '') {
+    optionsList.innerHTML = '';
+    const q = filterText.toLowerCase().trim();
+
+    // Default option (clear choice)
+    if (!q) {
+      const defItem = document.createElement('div');
+      defItem.className = 'custom-select-option' + (!select.value ? ' selected' : '');
+      defItem.dataset.value = '';
+      defItem.textContent = `— ${placeholder} —`;
+      defItem.addEventListener('click', () => chooseOption(''));
+      optionsList.appendChild(defItem);
+    }
+
+    let matchCount = 0;
+    Array.from(select.options).forEach(opt => {
+      if (!opt.value) return;
+      const text = opt.textContent;
+      if (q && text.toLowerCase().indexOf(q) === -1) return;
+      matchCount++;
+
+      const item = document.createElement('div');
+      item.className = 'custom-select-option' + (select.value === opt.value ? ' selected' : '');
+      item.dataset.value = opt.value;
+
+      if (q) {
+        const idx = text.toLowerCase().indexOf(q);
+        const before = text.substring(0, idx);
+        const match = text.substring(idx, idx + q.length);
+        const after = text.substring(idx + q.length);
+        item.innerHTML = `${escapeHTML(before)}<mark style="background:var(--warning-bg);color:var(--gray-900);padding:0 2px;border-radius:2px;font-weight:700">${escapeHTML(match)}</mark>${escapeHTML(after)}`;
+      } else {
+        item.textContent = text;
+      }
+
+      item.addEventListener('click', () => chooseOption(opt.value));
+      optionsList.appendChild(item);
+    });
+
+    if (matchCount === 0 && q) {
+      const emptyItem = document.createElement('div');
+      emptyItem.className = 'custom-select-empty';
+      emptyItem.textContent = `No ${placeholder.toLowerCase()}s found matching "${filterText}"`;
+      optionsList.appendChild(emptyItem);
+    }
+  }
+
+  function chooseOption(val) {
+    select.value = val;
+    const chosen = Array.from(select.options).find(o => o.value === val);
+    const displayText = chosen && chosen.value ? chosen.textContent : `— ${placeholder} —`;
+    selectedSpan.textContent = displayText;
+    if (val) {
+      selectedSpan.classList.remove('is-placeholder');
+      trigger.classList.remove('is-invalid');
+    } else {
+      selectedSpan.classList.add('is-placeholder');
+    }
+
+    closeDropdown();
+    select.dispatchEvent(new Event('change', { bubbles: true }));
+  }
+
+  function openDropdown() {
+    document.querySelectorAll('.custom-select-panel').forEach(p => {
+      if (p !== panel) {
+        p.style.display = 'none';
+        p.parentElement.querySelector('.custom-select-trigger')?.classList.remove('active');
+      }
+    });
+    panel.style.display = 'flex';
+    trigger.classList.add('active');
+    searchInput.value = '';
+    searchClear.style.display = 'none';
+    renderOptions('');
+    setTimeout(() => searchInput.focus(), 60);
+  }
+
+  function closeDropdown() {
+    panel.style.display = 'none';
+    trigger.classList.remove('active');
+  }
+
+  trigger.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (panel.style.display === 'none') openDropdown();
+    else closeDropdown();
+  });
+
+  trigger.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' || e.key === ' ' || e.key === 'ArrowDown') {
+      e.preventDefault();
+      openDropdown();
+    }
+  });
+
+  searchInput.addEventListener('input', () => {
+    const val = searchInput.value;
+    searchClear.style.display = val ? 'block' : 'none';
+    renderOptions(val);
+  });
+
+  searchInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      closeDropdown();
+      trigger.focus();
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const firstOpt = optionsList.querySelector('.custom-select-option');
+      if (firstOpt) chooseOption(firstOpt.dataset.value);
+    }
+  });
+
+  searchClear.addEventListener('click', (e) => {
+    e.stopPropagation();
+    searchInput.value = '';
+    searchClear.style.display = 'none';
+    searchInput.focus();
+    renderOptions('');
+  });
+
+  panel.addEventListener('click', e => e.stopPropagation());
+
+  // Close on click outside
+  document.addEventListener('click', (e) => {
+    if (!dropdownWrap.contains(e.target)) closeDropdown();
+  });
+
+  // Mirror validation classes from select to trigger
+  const observer = new MutationObserver(() => {
+    if (select.classList.contains('is-invalid')) trigger.classList.add('is-invalid');
+    else trigger.classList.remove('is-invalid');
+  });
+  observer.observe(select, { attributes: true, attributeFilter: ['class'] });
+
+  // Sync external select changes
+  select.addEventListener('change', () => {
+    const chosen = Array.from(select.options).find(o => o.value === select.value);
+    if (chosen && chosen.value) {
+      selectedSpan.textContent = chosen.textContent;
+      selectedSpan.classList.remove('is-placeholder');
+      trigger.classList.remove('is-invalid');
+    } else {
+      selectedSpan.textContent = `— ${placeholder} —`;
+      selectedSpan.classList.add('is-placeholder');
+    }
+  });
+
+  panel.appendChild(searchWrap);
+  panel.appendChild(optionsList);
+
+  dropdownWrap.appendChild(select);
+  dropdownWrap.appendChild(trigger);
+  dropdownWrap.appendChild(panel);
+  wrap.appendChild(dropdownWrap);
+
+  // Add button (+)
+  const addBtn = document.createElement('button');
+  addBtn.type = 'button';
+  addBtn.className = 'btn-add-option';
+  addBtn.title = `Add new ${placeholder}`;
+  addBtn.textContent = '＋';
 
   addBtn.addEventListener('click', () => {
     promptDialog(
@@ -363,11 +583,13 @@ function renderSmartSelect({ id, options, value, placeholder, onAdd, allowCustom
       (trimmed) => {
         if (onAdd) {
           return onAdd(trimmed).then(result => {
+            const newName = result.name || trimmed;
             const newOpt = document.createElement('option');
-            newOpt.value = result.name || trimmed;
-            newOpt.textContent = result.name || trimmed;
+            newOpt.value = newName;
+            newOpt.textContent = newName;
             newOpt.selected = true;
             select.appendChild(newOpt);
+            chooseOption(newName);
             toast(`"${trimmed}" added successfully`, 'success');
             loadConfig(true);
           }).catch(err => { toast(err.message, 'error'); throw err; });
@@ -377,12 +599,14 @@ function renderSmartSelect({ id, options, value, placeholder, onAdd, allowCustom
           newOpt.textContent = trimmed;
           newOpt.selected = true;
           select.appendChild(newOpt);
+          chooseOption(trimmed);
           return Promise.resolve();
         }
       },
       { placeholder: `Enter ${placeholder} name…` }
     );
-  });  // ← closes addBtn.addEventListener
+  });
+  wrap.appendChild(addBtn);
 
   return wrap;
 }
