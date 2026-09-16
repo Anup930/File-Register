@@ -32,12 +32,15 @@ const RegisterModule = (() => {
 
     return `
       <div class="toolbar">
-        <!-- Row 1: Search + action buttons -->
+        <!-- Row 1: Search + Reset button aligned side by side -->
         <div class="toolbar-row1">
           <div class="search-wrap">
             <span class="search-icon">🔍</span>
             <input type="text" class="search-input" id="reg-search" placeholder="Search by file number, client, details…" value="${state.search}">
           </div>
+          <button class="btn-reset-filters ${hasActive ? 'has-active' : ''}" id="btn-clear-filters" title="Clear all filters & search">
+            ✕ Reset Filters
+          </button>
         </div>
 
         <!-- Row 2: Filter bar -->
@@ -61,10 +64,6 @@ const RegisterModule = (() => {
             { value: 'Missing', text: '🔴 Missing' }
           ], state.status)}
           ${filterPill('Held By', 'reg-heldby', [{ value: '', text: 'Anyone' }, ...hods.map(h => ({ value: h, text: h }))], state.heldBy)}
-
-          <button class="btn-reset-filters ${hasActive ? 'has-active' : ''}" id="btn-clear-filters" title="Clear all filters">
-            ✕ Reset
-          </button>
         </div>
       </div>
       <div id="reg-table-wrap">
