@@ -4,6 +4,7 @@ const RegisterModule = (() => {
     page: 1, pageSize: 50, total: 0, pages: 0,
     search: '', category: '', subCategory: '', filesCount: '', location: '', binLocation: '', status: '', heldBy: '',
     files: [], allFiles: [], // allFiles used for CSV export
+    stats: null, // cached dashboard stats
   };
   let debounceTimer;
 
@@ -19,6 +20,19 @@ const RegisterModule = (() => {
     });
   }
 
+  function updateToolbarStats(s) {
+    if (!s) return;
+    const elTotal    = document.getElementById('reg-stat-total');
+    const elFiles    = document.getElementById('reg-stat-files');
+    const elCheckout = document.getElementById('reg-stat-checkout');
+    const elOverdue  = document.getElementById('reg-stat-overdue');
+
+    if (elTotal)    elTotal.textContent    = s.total !== undefined ? s.total : 0;
+    if (elFiles)    elFiles.textContent    = s.totalFiles !== undefined ? s.totalFiles : 0;
+    if (elCheckout) elCheckout.textContent = s.checkedOut !== undefined ? s.checkedOut : 0;
+    if (elOverdue)  elOverdue.textContent  = s.overdue !== undefined ? s.overdue : 0;
+  }
+
   function buildShell() {
     const cfg = App.config || {};
     const lsts = cfg.lists || {};
@@ -30,9 +44,15 @@ const RegisterModule = (() => {
     const statuses      = ['In office', 'Checked out', 'Archived', 'Missing'];
     const hasActive = !!(state.search || state.category || state.subCategory || state.filesCount || state.location || state.binLocation || state.status || state.heldBy);
 
+    const s = state.stats || {};
+    const totalVal      = s.total !== undefined ? s.total : '…';
+    const totalFilesVal = s.totalFiles !== undefined ? s.totalFiles : '…';
+    const checkedOutVal = s.checkedOut !== undefined ? s.checkedOut : '…';
+    const overdueVal    = s.overdue !== undefined ? s.overdue : '…';
+
     return `
       <div class="toolbar">
-        <!-- Row 1: Search + Reset button aligned side by side -->
+        <!-- Row 1: Search + Reset button + 4 Live Stat Cards in marked space -->
         <div class="toolbar-row1">
           <div class="search-wrap">
             <span class="search-icon">🔍</span>
@@ -41,6 +61,40 @@ const RegisterModule = (() => {
           <button class="btn-reset-filters ${hasActive ? 'has-active' : ''}" id="btn-clear-filters" title="Clear all filters & search">
             ✕ Reset Filters
           </button>
+
+          <div class="toolbar-stats-row">
+            <div class="stat-mini-card stat-blue clickable-stat-card" data-stat-filter="all" title="Click to view all registers">
+              <div class="stat-mini-icon">📁</div>
+              <div class="stat-mini-info">
+                <span class="stat-mini-val" id="reg-stat-total">${totalVal}</span>
+                <span class="stat-mini-lbl">Total Registers</span>
+              </div>
+            </div>
+
+            <div class="stat-mini-card stat-cyan clickable-stat-card" data-stat-filter="has_files" title="Click to filter registers with files">
+              <div class="stat-mini-icon">📄</div>
+              <div class="stat-mini-info">
+                <span class="stat-mini-val" id="reg-stat-files">${totalFilesVal}</span>
+                <span class="stat-mini-lbl">Files Inside</span>
+              </div>
+            </div>
+
+            <div class="stat-mini-card stat-orange clickable-stat-card" data-stat-filter="Checked out" title="Click to filter Checked Out files">
+              <div class="stat-mini-icon">📤</div>
+              <div class="stat-mini-info">
+                <span class="stat-mini-val" id="reg-stat-checkout">${checkedOutVal}</span>
+                <span class="stat-mini-lbl">Checked Out</span>
+              </div>
+            </div>
+
+            <div class="stat-mini-card stat-red clickable-stat-card" data-stat-filter="Overdue" title="Click to filter Overdue files">
+              <div class="stat-mini-icon">🔴</div>
+              <div class="stat-mini-info">
+                <span class="stat-mini-val" id="reg-stat-overdue">${overdueVal}</span>
+                <span class="stat-mini-lbl">Overdue</span>
+              </div>
+            </div>
+          </div>
         </div>
 
         <!-- Row 2: Filter bar -->
@@ -85,6 +139,32 @@ const RegisterModule = (() => {
   function bindTopbarActions(container) {
     document.getElementById('btn-export-csv')?.addEventListener('click', exportAll);
     document.getElementById('btn-clear-filters')?.addEventListener('click', () => clearFilters(container));
+
+    // Click on stat cards to filter
+    container.querySelectorAll('.clickable-stat-card').forEach(card => {
+      card.addEventListener('click', () => {
+        const filterType = card.dataset.statFilter;
+        if (filterType === 'all') {
+          clearFilters(container);
+          return;
+        }
+        if (filterType === 'has_files') {
+          const el = document.getElementById('reg-files-count');
+          if (el) { el.value = 'has_files'; el.dispatchEvent(new Event('change')); }
+          return;
+        }
+        if (filterType === 'In office' || filterType === 'Checked out' || filterType === 'Archived') {
+          const el = document.getElementById('reg-status');
+          if (el) { el.value = filterType; el.dispatchEvent(new Event('change')); }
+          return;
+        }
+        if (filterType === 'Overdue') {
+          const el = document.getElementById('reg-status');
+          if (el) { el.value = 'Checked out'; el.dispatchEvent(new Event('change')); }
+          return;
+        }
+      });
+    });
 
     const searchEl = document.getElementById('reg-search');
     if (searchEl) searchEl.addEventListener('input', e => {
@@ -168,6 +248,27 @@ const RegisterModule = (() => {
       state.total = data.total || 0;
       state.pages = data.pages || 0;
       state.page  = data.page  || 1;
+
+      // Dynamically update the 4 stat cards according to current filter results!
+      let s = data.stats;
+      if (!s) {
+        let totalFiles = 0, checkedOut = 0, overdue = 0;
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        state.files.forEach(f => {
+          totalFiles += (f.fileCount || 0);
+          if (f.status === 'Checked out') {
+            checkedOut++;
+            if (f.dueDate) {
+              const d = new Date(f.dueDate); d.setHours(0, 0, 0, 0);
+              if (d < today) overdue++;
+            }
+          }
+        });
+        s = { total: state.total, totalFiles, checkedOut, overdue };
+      }
+      state.stats = s;
+      updateToolbarStats(s);
+
       wrap.innerHTML = buildTable(state.files) + buildPagination();
       bindTableActions(wrap);
     }).catch(err => {
@@ -250,8 +351,8 @@ const RegisterModule = (() => {
         const action = btn.dataset.action;
         if      (action === 'view')     navigate(`#file/${encodeURIComponent(fn)}`);
         else if (action === 'edit')     navigate(`#edit/${encodeURIComponent(fn)}`);
-        else if (action === 'checkout') CheckoutModule.openCheckout(fn, () => fetchAndRender());
-        else if (action === 'return')   CheckoutModule.openReturn(fn, () => fetchAndRender());
+        else if (action === 'checkout') CheckoutModule.openCheckout(fn, () => { fetchAndRender(); loadRegisterStats(document.getElementById('content')); });
+        else if (action === 'return')   CheckoutModule.openReturn(fn, () => { fetchAndRender(); loadRegisterStats(document.getElementById('content')); });
         else if (action === 'sticker')  StickerModule.openSticker(fn);
         else if (action === 'delete')   doDelete(fn);
       });
@@ -264,7 +365,7 @@ const RegisterModule = (() => {
   function doDelete(fn) {
     confirmDialog(`Permanently delete file <strong>${fn}</strong>? This cannot be undone.`, () => {
       api('deleteFile', {}, { action: 'deleteFile', fileNumber: fn, deletedBy: App.user })
-        .then(() => { toast('File deleted', 'success'); fetchAndRender(); })
+        .then(() => { toast('File deleted', 'success'); fetchAndRender(); loadRegisterStats(document.getElementById('content')); })
         .catch(err => toast('Delete failed: ' + err.message, 'error'));
     }, 'Delete');
   }
