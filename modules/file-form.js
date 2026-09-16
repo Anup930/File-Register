@@ -27,12 +27,19 @@ const FileFormModule = (() => {
   }
 
   // ── DETAIL VIEW ───────────────────────────────────────────────
+  // ── DETAIL VIEW ───────────────────────────────────────────────
   function renderDetail(container, topbarActions, fileNumber) {
     container.innerHTML = '<div class="page-loading"><div class="spinner"></div><span>Loading…</span></div>';
     if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') {
       container.innerHTML = '<div class="page-loading"><p>Connect Apps Script to view files.</p></div>'; return;
     }
-    Promise.all([api('getFile', { fileNumber }), api('getActivityLog', { fileNumber })]).then(([file, log]) => {
+    Promise.all([
+      api('getFile', { fileNumber }),
+      api('getActivityLog', { fileNumber }),
+      api('getRegisterFiles', { registerNumber: fileNumber }).catch(() => [])
+    ]).then(([file, log, subFiles]) => {
+      const regFiles = (subFiles && subFiles.length) ? subFiles : (file.files || []);
+
       topbarActions.innerHTML = `
         <button class="btn btn-secondary btn-sm" id="d-btn-back">← Register</button>
         <button class="btn btn-secondary btn-sm" id="d-btn-edit">✏️ Edit</button>
@@ -42,15 +49,15 @@ const FileFormModule = (() => {
         <button class="btn btn-secondary btn-sm" id="d-btn-sticker">🏷️ Sticker</button>
         <button class="btn btn-danger btn-sm" id="d-btn-delete">🗑️</button>`;
 
-      container.innerHTML = buildDetailHTML(file, log);
+      container.innerHTML = buildDetailHTML(file, log, regFiles);
 
       qs('#d-btn-back')?.addEventListener('click', () => navigate('#register'));
       qs('#d-btn-edit')?.addEventListener('click', () => navigate(`#edit/${encodeURIComponent(fileNumber)}`));
       qs('#d-btn-sticker')?.addEventListener('click', () => StickerModule.openStickerFromFile(file));
       qs('#d-btn-delete')?.addEventListener('click', () => {
-        confirmDialog(`Permanently delete <strong>${fileNumber}</strong>?`, () => {
+        confirmDialog(`Permanently delete Register <strong>${fileNumber}</strong>?`, () => {
           api('deleteFile', {}, { action: 'deleteFile', fileNumber, deletedBy: App.user })
-            .then(() => { toast('File deleted', 'success'); navigate('#register'); })
+            .then(() => { toast('Register deleted', 'success'); navigate('#register'); })
             .catch(err => toast(err.message, 'error'));
         }, 'Delete');
       });
@@ -60,6 +67,39 @@ const FileFormModule = (() => {
         } else {
           CheckoutModule.openCheckout(fileNumber, () => renderDetail(container, topbarActions, fileNumber));
         }
+      });
+
+      // Bind Add File button
+      qs('#btn-add-reg-file')?.addEventListener('click', () => {
+        openAddRegisterFileModal(fileNumber, null, () => renderDetail(container, topbarActions, fileNumber));
+      });
+      qs('#btn-add-reg-file-empty')?.addEventListener('click', () => {
+        openAddRegisterFileModal(fileNumber, null, () => renderDetail(container, topbarActions, fileNumber));
+      });
+
+      // Bind Edit & Delete on Subfiles
+      qsa('.btn-edit-subfile', container).forEach(b => {
+        b.addEventListener('click', () => {
+          const fid = b.dataset.fileId;
+          const target = regFiles.find(x => x.fileId === fid);
+          if (target) openAddRegisterFileModal(fileNumber, target, () => renderDetail(container, topbarActions, fileNumber));
+        });
+      });
+
+      qsa('.btn-del-subfile', container).forEach(b => {
+        b.addEventListener('click', () => {
+          const fid = b.dataset.fileId;
+          const target = regFiles.find(x => x.fileId === fid);
+          const fname = target ? target.fileName : fid;
+          confirmDialog(`Delete file <strong>${fid}</strong> (${fname}) from this register?`, () => {
+            api('deleteRegisterFile', {}, { action: 'deleteRegisterFile', fileId: fid, deletedBy: App.user })
+              .then(() => {
+                toast('File deleted from register', 'success');
+                renderDetail(container, topbarActions, fileNumber);
+              })
+              .catch(err => toast(err.message, 'error'));
+          }, 'Delete');
+        });
       });
 
       // Tabs
@@ -76,7 +116,7 @@ const FileFormModule = (() => {
     });
   }
 
-  function buildDetailHTML(file, log) {
+  function buildDetailHTML(file, log, regFiles = []) {
     const overdue = file.status === 'Checked out' && file.dueDate && new Date(file.dueDate) < new Date();
     const tags = (file.tags || '').split(',').filter(t => t.trim()).map(t => `<span class="chip">${t.trim()}</span>`).join('');
 
@@ -90,23 +130,81 @@ const FileFormModule = (() => {
         </div>
       </div>`).join('') || '<p style="color:var(--gray-500);text-align:center;padding:24px">No activity recorded</p>';
 
+    const filesTableHTML = regFiles.length > 0
+      ? `
+        <div class="table-wrap" style="margin-top:10px;">
+          <table>
+            <thead><tr>
+              <th>File ID</th>
+              <th>File Name / Title</th>
+              <th>Description / Particular</th>
+              <th>File Date</th>
+              <th>Status</th>
+              <th>Added By</th>
+              <th style="text-align:center">Actions</th>
+            </tr></thead>
+            <tbody>
+              ${regFiles.map(f => `
+                <tr>
+                  <td style="font-family:monospace;font-weight:700;color:var(--primary);white-space:nowrap">${f.fileId}</td>
+                  <td style="font-weight:600;color:var(--gray-900)">${f.fileName}</td>
+                  <td style="color:var(--gray-700);font-size:.85rem;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${f.description || ''}">${f.description || '—'}</td>
+                  <td style="white-space:nowrap;font-size:.85rem">${f.fileDate ? fmtDate(f.fileDate) : '—'}</td>
+                  <td><span class="badge ${f.status === 'Active' ? 'badge-inoffice' : f.status === 'Archived' ? 'badge-archived' : 'badge-checkedout'}">${f.status || 'Active'}</span></td>
+                  <td style="font-size:.8rem;color:var(--gray-500);white-space:nowrap">${f.createdBy || '—'}</td>
+                  <td style="text-align:center">
+                    <div class="col-actions" style="justify-content:center">
+                      <button class="btn btn-ghost btn-icon btn-sm btn-edit-subfile" data-file-id="${f.fileId}" title="Edit File">✏️</button>
+                      <button class="btn btn-ghost btn-icon btn-sm btn-del-subfile" data-file-id="${f.fileId}" title="Delete File" style="color:var(--danger)">🗑️</button>
+                    </div>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`
+      : `
+        <div class="table-empty" style="padding:36px 16px;border:1px dashed var(--gray-300);border-radius:var(--radius);margin-top:10px;">
+          <div class="empty-icon" style="font-size:2.2rem">📂</div>
+          <p style="font-size:0.95rem;color:var(--gray-600);margin-bottom:12px">No files added to this register yet.</p>
+          <button class="btn btn-primary btn-sm" id="btn-add-reg-file-empty">➕ Add First File</button>
+        </div>`;
+
     return `
-      <div style="max-width:900px">
+      <div style="max-width:950px">
         <div class="card" style="margin-bottom:16px">
           <div class="card-header">
             <div>
               <div style="font-family:monospace;font-size:1.4rem;font-weight:700;color:var(--primary)">${file.fileNumber}</div>
               ${file.oldFileNumber ? `<div style="font-size:.8rem;color:var(--gray-500)">Old: ${file.oldFileNumber}</div>` : ''}
             </div>
-            ${statusBadge(file.status)}
+            <div style="display:flex;gap:8px;align-items:center;">
+              <span class="badge" style="background:var(--primary-light);color:var(--primary);font-size:.85rem;padding:4px 10px;">📂 ${regFiles.length} Files Inside</span>
+              ${statusBadge(file.status)}
+            </div>
           </div>
           ${overdue ? `<div style="background:var(--danger-bg);color:var(--danger);padding:8px 20px;font-size:.85rem;font-weight:600">⚠️ Overdue — Due ${fmtDate(file.dueDate)}, held by ${file.heldBy}</div>` : ''}
           <div class="card-body">
             <div class="tabs">
-              <button class="tab-btn active" data-tab="details">Details</button>
+              <button class="tab-btn active" data-tab="files">📁 Files in this Register (${regFiles.length})</button>
+              <button class="tab-btn" data-tab="details">Register Details</button>
               <button class="tab-btn" data-tab="activity">Activity Log</button>
             </div>
-            <div id="tab-details" class="tab-content active">
+
+            <!-- Tab 1: Files inside Register -->
+            <div id="tab-files" class="tab-content active">
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;flex-wrap:wrap;gap:10px;">
+                <div>
+                  <h4 style="margin:0;font-size:1rem;color:var(--gray-900);font-weight:700">All Files in Register ${file.fileNumber}</h4>
+                  <span style="font-size:0.8rem;color:var(--gray-500)">Manage individual documents & files stored inside this master folder/register</span>
+                </div>
+                <button class="btn btn-primary btn-sm" id="btn-add-reg-file">➕ Add File to Register</button>
+              </div>
+              ${filesTableHTML}
+            </div>
+
+            <!-- Tab 2: Details -->
+            <div id="tab-details" class="tab-content">
               <div class="detail-grid">
                 ${df('Client', file.clientName)}
                 ${df('Category', file.category)}
@@ -130,12 +228,134 @@ const FileFormModule = (() => {
                 <span>Updated by ${file.updatedBy || '—'} on ${fmtDate(file.updatedAt)}</span>
               </div>
             </div>
+
+            <!-- Tab 3: Activity Log -->
             <div id="tab-activity" class="tab-content">
               <div class="activity-list">${activityHTML}</div>
             </div>
           </div>
         </div>
       </div>`;
+  }
+
+  function openAddRegisterFileModal(registerNumber, fileToEdit, onDone) {
+    const isEdit = !!fileToEdit;
+    const f = fileToEdit || {};
+    const statuses = ['Active', 'In file', 'Checked out', 'Archived', 'Missing'];
+
+    const modalBody = `
+      <form id="reg-subfile-form" novalidate>
+        <div class="form-group" style="margin-bottom:14px">
+          <label class="form-label" style="font-size:.78rem">Register Number</label>
+          <input type="text" class="form-control" value="${registerNumber}" disabled style="background:var(--gray-100);font-family:monospace;font-weight:700;">
+        </div>
+
+        <div class="form-grid" style="margin-bottom:14px">
+          <div class="form-group">
+            <label class="form-label" style="font-size:.78rem">File ID <span class="required">*</span></label>
+            <input type="text" class="form-control" id="m-file-id" value="${f.fileId || ''}" placeholder="Generating ID…" style="font-family:monospace;font-weight:600">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="font-size:.78rem">Status</label>
+            <select class="form-control" id="m-file-status">
+              ${statuses.map(s => `<option ${(f.status || 'Active') === s ? 'selected' : ''}>${s}</option>`).join('')}
+            </select>
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-bottom:14px">
+          <label class="form-label" style="font-size:.78rem">File Name / Title <span class="required">*</span></label>
+          <input type="text" class="form-control" id="m-file-name" value="${f.fileName || ''}" placeholder="e.g. Board Resolution, Form 3CD, Invoices" required>
+        </div>
+
+        <div class="form-group" style="margin-bottom:14px">
+          <label class="form-label" style="font-size:.78rem">Description / Particular</label>
+          <textarea class="form-control" id="m-file-desc" rows="2" placeholder="Details about this document/file…">${f.description || ''}</textarea>
+        </div>
+
+        <div class="form-grid" style="margin-bottom:14px">
+          <div class="form-group">
+            <label class="form-label" style="font-size:.78rem">File Date</label>
+            <input type="date" class="form-control" id="m-file-date" value="${f.fileDate ? new Date(f.fileDate).toISOString().split('T')[0] : ''}">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="font-size:.78rem">Notes / Remarks</label>
+            <input type="text" class="form-control" id="m-file-notes" value="${f.notes || ''}" placeholder="Optional notes…">
+          </div>
+        </div>
+      </form>
+    `;
+
+    openModal({
+      title: isEdit ? `✏️ Edit File: ${f.fileId}` : `➕ Add File to Register: ${registerNumber}`,
+      body: modalBody,
+      footer: `
+        <button class="btn btn-secondary btn-sm" id="m-subfile-cancel">Cancel</button>
+        <button class="btn btn-primary btn-sm" id="m-subfile-save">${isEdit ? '💾 Save Changes' : '➕ Add File'}</button>
+      `
+    });
+
+    if (!isEdit) {
+      api('generateRegisterFileId', { registerNumber }).then(res => {
+        const idInput = qs('#m-file-id');
+        if (idInput && !idInput.value) idInput.value = res.fileId;
+      }).catch(() => {
+        const idInput = qs('#m-file-id');
+        if (idInput && !idInput.value) idInput.value = registerNumber + '-F01';
+      });
+    }
+
+    qs('#m-subfile-cancel')?.addEventListener('click', closeModal);
+
+    qs('#m-subfile-save')?.addEventListener('click', () => {
+      const fileId   = qs('#m-file-id')?.value.trim();
+      const fileName = qs('#m-file-name')?.value.trim();
+      const status   = qs('#m-file-status')?.value;
+      const desc     = qs('#m-file-desc')?.value.trim();
+      const fileDate = qs('#m-file-date')?.value;
+      const notes    = qs('#m-file-notes')?.value.trim();
+
+      if (!fileName) {
+        toast('File Name / Title is required', 'warning');
+        qs('#m-file-name')?.focus();
+        return;
+      }
+      if (!fileId) {
+        toast('File ID is required', 'warning');
+        qs('#m-file-id')?.focus();
+        return;
+      }
+
+      const saveBtn = qs('#m-subfile-save');
+      saveBtn.disabled = true;
+      saveBtn.textContent = 'Saving…';
+
+      const payload = {
+        fileId,
+        registerNumber,
+        fileName,
+        description: desc,
+        fileDate,
+        status,
+        notes
+      };
+
+      const action = isEdit ? 'updateRegisterFile' : 'addRegisterFile';
+      if (isEdit) payload.updatedBy = App.user;
+      else payload.createdBy = App.user;
+
+      api(action, {}, { action, ...payload })
+        .then(() => {
+          toast(isEdit ? 'File updated' : 'File added to register', 'success');
+          closeModal();
+          if (onDone) onDone();
+        })
+        .catch(err => {
+          toast(err.message, 'error');
+          saveBtn.disabled = false;
+          saveBtn.textContent = isEdit ? '💾 Save Changes' : '➕ Add File';
+        });
+    });
   }
 
   function df(label, value, full = false) {

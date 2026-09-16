@@ -140,6 +140,11 @@ const RegisterModule = (() => {
           <td>${f.clientName || '—'}</td>
           <td>${f.category || '—'}</td>
           <td>${f.subCategory || '—'}</td>
+          <td>
+            <a href="#file/${encodeURIComponent(f.fileNumber)}" class="badge" style="background:var(--primary-light);color:var(--primary);text-decoration:none;font-size:.78rem;padding:3px 8px;cursor:pointer" title="View files inside this register">
+              📂 ${f.fileCount || 0} Files
+            </a>
+          </td>
           <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${f.details}">${f.details || '—'}</td>
           <td>${f.location || '—'}</td>
           <td style="font-family:monospace;font-size:.8rem">${f.binLocation || '—'}</td>
@@ -164,7 +169,7 @@ const RegisterModule = (() => {
         <table>
           <thead><tr>
             <th>File Number</th><th>Client</th><th>Category</th>
-            <th>Sub-Category</th><th>Details</th><th>Location</th>
+            <th>Sub-Category</th><th>Files</th><th>Details</th><th>Location</th>
             <th>Bin</th><th>Status</th><th>Held By</th><th>Actions</th>
           </tr></thead>
           <tbody>${rows}</tbody>

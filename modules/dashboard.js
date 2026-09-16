@@ -43,12 +43,12 @@ const DashboardModule = (() => {
 
     const statsGrid = `
       <div class="stats-grid">
-        ${statCard('📁', s.total || 0, 'Total Files', 'blue')}
+        ${statCard('📁', s.total || 0, 'Total Registers', 'blue')}
+        ${statCard('📄', s.totalFiles || 0, 'Files Inside', 'blue')}
         ${statCard('✅', s.inOffice || 0, 'In Office', 'green')}
         ${statCard('📤', s.checkedOut || 0, 'Checked Out', 'orange')}
         ${statCard('🔴', s.overdue || 0, 'Overdue', 'red')}
         ${statCard('🗄️', s.archived || 0, 'Archived', 'gray')}
-        ${statCard('❓', s.missing || 0, 'Missing', 'red')}
       </div>`;
 
     const byLoc = data.byLocation || {};
