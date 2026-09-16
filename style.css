@@ -281,6 +281,14 @@ input, select, textarea { font-family: inherit; font-size: 1rem; }
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.16);
 }
 
+.clickable-stat-card {
+  cursor: pointer;
+  user-select: none;
+}
+.clickable-stat-card:active {
+  transform: scale(0.98);
+}
+
 /* Translucent frosted glass icon box */
 .stat-icon-wrap {
   width: 48px;
@@ -331,33 +339,41 @@ input, select, textarea { font-family: inherit; font-size: 1rem; }
 
 /* ── Full Vibrant Gradient Themes (Exact CCMS style) ────────── */
 /* 1. Total Registers: Royal Blue / Indigo */
-.stat-card.stat-blue {
-  background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%);
+.stat-card.stat-blue,
+.stat-mini-card.stat-blue {
+  background: linear-gradient(135deg, #4361ee 0%, #3a0ca3 100%) !important;
 }
 
 /* 2. Files Inside: Electric Sky Cyan */
-.stat-card.stat-cyan, .stat-card.stat-teal {
-  background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%);
+.stat-card.stat-cyan,
+.stat-card.stat-teal,
+.stat-mini-card.stat-cyan,
+.stat-mini-card.stat-teal {
+  background: linear-gradient(135deg, #00c6ff 0%, #0072ff 100%) !important;
 }
 
 /* 3. In Office: Lush Emerald Green */
-.stat-card.stat-green {
-  background: linear-gradient(135deg, #00b09b 0%, #2ecc71 100%);
+.stat-card.stat-green,
+.stat-mini-card.stat-green {
+  background: linear-gradient(135deg, #00b09b 0%, #2ecc71 100%) !important;
 }
 
 /* 4. Checked Out: Sunset Amber Orange */
-.stat-card.stat-orange {
-  background: linear-gradient(135deg, #ff9900 0%, #ff5e62 100%);
+.stat-card.stat-orange,
+.stat-mini-card.stat-orange {
+  background: linear-gradient(135deg, #ff9900 0%, #ff5e62 100%) !important;
 }
 
 /* 5. Overdue: Vibrant Coral Red */
-.stat-card.stat-red {
-  background: linear-gradient(135deg, #ff5e62 0%, #ff9966 100%);
+.stat-card.stat-red,
+.stat-mini-card.stat-red {
+  background: linear-gradient(135deg, #ff5e62 0%, #ff9966 100%) !important;
 }
 
 /* 6. Archived: Magenta / Purple */
-.stat-card.stat-purple {
-  background: linear-gradient(135deg, #c471ed 0%, #f64f59 100%);
+.stat-card.stat-purple,
+.stat-mini-card.stat-purple {
+  background: linear-gradient(135deg, #c471ed 0%, #f64f59 100%) !important;
 }
 
 /* ── Table ───────────────────────────────────────────────────── */
@@ -417,13 +433,79 @@ tbody td { padding: 10px 14px; color: var(--gray-800); vertical-align: middle; }
   display: flex;
   align-items: center;
   gap: 12px;
+  flex-wrap: wrap;
 }
 
 .search-wrap {
   position: relative;
-  max-width: 380px;
+  max-width: 320px;
+  min-width: 220px;
   width: 100%;
-  flex: 0 1 380px;
+  flex: 0 1 320px;
+}
+
+/* ── Inline Toolbar Stats (Row 1 Red Marked Space) ────────── */
+.toolbar-stats-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.stat-mini-card {
+  height: 42px;
+  padding: 0 16px 0 10px;
+  border-radius: 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  color: #ffffff !important;
+  border: none !important;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  min-width: 140px;
+  user-select: none;
+  cursor: pointer;
+}
+
+.stat-mini-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.2);
+}
+
+.stat-mini-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.25) !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 1.05rem;
+  flex-shrink: 0;
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+}
+
+.stat-mini-info {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.15;
+}
+
+.stat-mini-val {
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffffff !important;
+  letter-spacing: -0.01em;
+}
+
+.stat-mini-lbl {
+  font-size: 0.72rem;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.95) !important;
+  white-space: nowrap;
+  letter-spacing: 0.01em;
 }
 
 .search-wrap .search-icon {
