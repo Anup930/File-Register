@@ -54,9 +54,28 @@
       <a href="#import" class="nav-link" data-page="import">
         <span class="nav-icon">📥</span> Bulk Import
       </a>
-      <a href="#settings" class="nav-link" data-page="settings">
-        <span class="nav-icon">⚙️</span> Master Data
-      </a>
+      <div class="nav-section-label">Settings</div>
+      <div class="nav-group" id="nav-settings-group">
+        <a href="#settings" class="nav-link nav-group-header" data-page="settings" id="btn-toggle-settings">
+          <span class="nav-icon">⚙️</span>
+          <span style="flex:1">Settings</span>
+          <span class="nav-arrow">▾</span>
+        </a>
+        <div class="nav-submenu" id="nav-settings-submenu">
+          <a href="#settings/clients" class="nav-link sub-nav-link" data-page="settings/clients">
+            <span class="nav-icon">👥</span> Clients
+          </a>
+          <a href="#settings/categories" class="nav-link sub-nav-link" data-page="settings/categories">
+            <span class="nav-icon">📁</span> Categories
+          </a>
+          <a href="#settings/subcategories" class="nav-link sub-nav-link" data-page="settings/subcategories">
+            <span class="nav-icon">📂</span> Sub-Categories
+          </a>
+          <a href="#settings/lists" class="nav-link sub-nav-link" data-page="settings/lists">
+            <span class="nav-icon">📋</span> Lists
+          </a>
+        </div>
+      </div>
     </div>
 
     <div class="sidebar-footer">

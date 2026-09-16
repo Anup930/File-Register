@@ -93,7 +93,11 @@ function navigate(hash) {
     add:       'Add New File',
     stickers:  'Print Stickers',
     import:    'Bulk Import',
-    settings:  'Master Data',
+    settings:  'Settings — Master Data',
+    'settings/clients':       'Settings — Clients',
+    'settings/categories':    'Settings — Categories',
+    'settings/subcategories': 'Settings — Sub-Categories',
+    'settings/lists':         'Settings — Drop-down Lists',
   };
 
   const topbarTitle = document.getElementById('topbar-title');
@@ -111,9 +115,12 @@ function navigate(hash) {
     case 'add':           FileFormModule.renderAdd(content, topbarActions); break;
     case 'stickers':      StickerModule.renderPrintPage(content, topbarActions); break;
     case 'import':        ImportModule.render(content, topbarActions); break;
-    case 'settings':      MastersModule.render(content, topbarActions); break;
+    case 'settings':      MastersModule.render(content, topbarActions, 'clients'); break;
     default:
-      if (page.startsWith('file/')) {
+      if (page.startsWith('settings/')) {
+        const subtab = page.replace('settings/', '');
+        MastersModule.render(content, topbarActions, subtab);
+      } else if (page.startsWith('file/')) {
         const fn = decodeURIComponent(page.replace('file/', ''));
         FileFormModule.renderDetail(content, topbarActions, fn);
       } else if (page.startsWith('edit/')) {
@@ -127,7 +134,10 @@ function navigate(hash) {
 
 function setActiveNav(page) {
   document.querySelectorAll('.nav-link').forEach(a => {
-    a.classList.toggle('active', a.dataset.page === page || page.startsWith(a.dataset.page + '/'));
+    const p = a.dataset.page;
+    if (!p) return;
+    const isActive = (p === page) || (p === 'settings' && (page === 'settings' || page.startsWith('settings/')));
+    a.classList.toggle('active', isActive);
   });
 }
 
@@ -140,6 +150,13 @@ function initSidebar() {
   document.getElementById('main').addEventListener('click', e => {
     if (window.innerWidth <= 768 && !sidebar.contains(e.target)) {
       sidebar.classList.remove('open');
+    }
+  });
+
+  document.getElementById('btn-toggle-settings')?.addEventListener('click', () => {
+    const group = document.getElementById('nav-settings-group');
+    if (location.hash.startsWith('#settings')) {
+      group?.classList.toggle('collapsed');
     }
   });
 }
