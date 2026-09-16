@@ -2,7 +2,7 @@
 const RegisterModule = (() => {
   let state = {
     page: 1, pageSize: 50, total: 0, pages: 0,
-    search: '', status: '', location: '', entity: '', businessVertical: '', hod: '', fileType: '',
+    search: '', category: '', subCategory: '', filesCount: '', location: '', binLocation: '', status: '', heldBy: '',
     files: [], allFiles: [], // allFiles used for CSV export
   };
   let debounceTimer;
@@ -12,61 +12,80 @@ const RegisterModule = (() => {
       <button class="btn btn-secondary btn-sm no-print" id="btn-export-csv">📥 Export CSV</button>
       <a href="#add" class="btn btn-primary btn-sm no-print">➕ Add File</a>`;
 
-    container.innerHTML = buildShell();
-    bindTopbarActions();
-    fetchAndRender();
+    loadConfig().then(() => {
+      container.innerHTML = buildShell();
+      bindTopbarActions(container);
+      fetchAndRender();
+    });
   }
 
   function buildShell() {
     const cfg = App.config || {};
     const lsts = cfg.lists || {};
-    const locations = lsts['Locations'] || [];
-    const entities  = lsts['Entities'] || [];
-    const bvs       = lsts['Business Verticals'] || [];
-    const hods      = lsts['HODs'] || [];
-    const fts       = lsts['File Types'] || [];
-    const statuses  = ['In office', 'Checked out', 'Archived', 'Missing'];
+    const categories    = (cfg.categories || []).map(c => c.name);
+    const subcategories = (cfg.subcategories || []).map(c => c.name);
+    const locations     = lsts['Locations'] || [];
+    const bins          = lsts['Bin Locations'] || [];
+    const hods          = lsts['HODs'] || [];
+    const statuses      = ['In office', 'Checked out', 'Archived', 'Missing'];
+    const hasActive = !!(state.search || state.category || state.subCategory || state.filesCount || state.location || state.binLocation || state.status || state.heldBy);
 
     return `
       <div class="toolbar">
-        <div class="search-wrap">
-          <span class="search-icon">🔍</span>
-          <input type="text" class="search-input" id="reg-search" placeholder="Search files…" value="${state.search}">
+        <!-- Row 1: Search + action buttons -->
+        <div class="toolbar-row1">
+          <div class="search-wrap">
+            <span class="search-icon">🔍</span>
+            <input type="text" class="search-input" id="reg-search" placeholder="Search by file number, client, details…" value="${state.search}">
+          </div>
         </div>
-        <button class="btn btn-secondary btn-sm" id="btn-toggle-filters">⚙ Filters</button>
-      </div>
-      <div class="filter-row" id="filter-row" style="display:none">
-        ${filterSelect('Status', 'reg-status', statuses, state.status)}
-        ${filterSelect('Location', 'reg-location', locations, state.location)}
-        ${filterSelect('Entity', 'reg-entity', entities, state.entity)}
-        ${filterSelect('Business Vertical', 'reg-bv', bvs, state.businessVertical)}
-        ${filterSelect('HOD', 'reg-hod', hods, state.hod)}
-        ${filterSelect('File Type', 'reg-ft', fts, state.fileType)}
-        <label style="display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--gray-700)">
-          <input type="checkbox" id="reg-archived" ${state.status === 'Archived' ? 'checked' : ''}> Show Archived
-        </label>
-        <button class="btn btn-ghost btn-sm" id="btn-clear-filters">✕ Clear</button>
+
+        <!-- Row 2: Filter bar -->
+        <div class="filter-bar">
+          <span class="filter-bar-label">🔽 Filters</span>
+
+          ${filterPill('Category', 'reg-category', [{ value: '', text: 'All' }, ...categories.map(c => ({ value: c, text: c }))], state.category)}
+          ${filterPill('Sub-Cat', 'reg-subcategory', [{ value: '', text: 'All' }, ...subcategories.map(c => ({ value: c, text: c }))], state.subCategory)}
+          ${filterPill('Files', 'reg-files-count', [
+            { value: '', text: 'Any' },
+            { value: 'has_files', text: '📂 Has Files' },
+            { value: 'no_files', text: '📭 Empty' }
+          ], state.filesCount)}
+          ${filterPill('Location', 'reg-location', [{ value: '', text: 'All' }, ...locations.map(l => ({ value: l, text: l }))], state.location)}
+          ${filterPill('Bin', 'reg-bin', [{ value: '', text: 'All' }, ...bins.map(b => ({ value: b, text: b }))], state.binLocation)}
+          ${filterPill('Status', 'reg-status', [
+            { value: '', text: 'All' },
+            { value: 'In office', text: '🟢 In Office' },
+            { value: 'Checked out', text: '🟡 Checked Out' },
+            { value: 'Archived', text: '📦 Archived' },
+            { value: 'Missing', text: '🔴 Missing' }
+          ], state.status)}
+          ${filterPill('Held By', 'reg-heldby', [{ value: '', text: 'Anyone' }, ...hods.map(h => ({ value: h, text: h }))], state.heldBy)}
+
+          <button class="btn-reset-filters ${hasActive ? 'has-active' : ''}" id="btn-clear-filters" title="Clear all filters">
+            ✕ Reset
+          </button>
+        </div>
       </div>
       <div id="reg-table-wrap">
         <div class="page-loading"><div class="spinner"></div></div>
       </div>`;
   }
 
-  function filterSelect(label, id, options, value) {
+  function filterPill(label, id, options, value) {
+    const isActive = !!value;
     return `
-      <select class="filter-select ${value ? 'filter-active' : ''}" id="${id}" title="${label}">
-        <option value="">All ${label}s</option>
-        ${options.map(o => `<option value="${o}" ${o === value ? 'selected' : ''}>${o}</option>`).join('')}
-      </select>`;
+      <div class="filter-pill ${isActive ? 'filter-active' : ''}">
+        <span class="filter-pill-label">${label}</span>
+        <select class="filter-select" id="${id}">
+          ${options.map(o => `<option value="${o.value}" ${o.value === value ? 'selected' : ''}>${o.text}</option>`).join('')}
+        </select>
+      </div>`;
   }
 
-  function bindTopbarActions() {
+  function bindTopbarActions(container) {
     document.getElementById('btn-export-csv')?.addEventListener('click', exportAll);
-    document.getElementById('btn-toggle-filters')?.addEventListener('click', () => {
-      const fr = document.getElementById('filter-row');
-      if (fr) fr.style.display = fr.style.display === 'none' ? 'flex' : 'none';
-    });
-    document.getElementById('btn-clear-filters')?.addEventListener('click', clearFilters);
+    document.getElementById('btn-clear-filters')?.addEventListener('click', () => clearFilters(container));
 
     const searchEl = document.getElementById('reg-search');
     if (searchEl) searchEl.addEventListener('input', e => {
@@ -74,27 +93,51 @@ const RegisterModule = (() => {
       debounceTimer = setTimeout(() => { state.search = e.target.value.trim(); state.page = 1; fetchAndRender(); }, 300);
     });
 
-    ['reg-status','reg-location','reg-entity','reg-bv','reg-hod','reg-ft'].forEach(id => {
+    ['reg-category', 'reg-subcategory', 'reg-files-count', 'reg-location', 'reg-bin', 'reg-status', 'reg-heldby'].forEach(id => {
       const el = document.getElementById(id);
       if (!el) return;
       el.addEventListener('change', () => {
-        const map = {'reg-status':'status','reg-location':'location','reg-entity':'entity','reg-bv':'businessVertical','reg-hod':'hod','reg-ft':'fileType'};
+        const map = {
+          'reg-category': 'category',
+          'reg-subcategory': 'subCategory',
+          'reg-files-count': 'filesCount',
+          'reg-location': 'location',
+          'reg-bin': 'binLocation',
+          'reg-status': 'status',
+          'reg-heldby': 'heldBy'
+        };
         state[map[id]] = el.value;
         state.page = 1;
+        // Toggle pill active state
+        const pill = el.closest('.filter-pill');
+        if (pill) pill.classList.toggle('filter-active', !!el.value);
+        // Toggle reset button state
+        const resetBtn = document.getElementById('btn-clear-filters');
+        if (resetBtn) {
+          const anyActive = !!(state.search || state.category || state.subCategory || state.filesCount || state.location || state.binLocation || state.status || state.heldBy);
+          resetBtn.classList.toggle('has-active', anyActive);
+        }
+
         fetchAndRender();
       });
     });
   }
 
-  function clearFilters() {
-    state.search = ''; state.status = ''; state.location = '';
-    state.entity = ''; state.businessVertical = ''; state.hod = ''; state.fileType = '';
+  function clearFilters(container) {
+    state.search = '';
+    state.category = '';
+    state.subCategory = '';
+    state.filesCount = '';
+    state.location = '';
+    state.binLocation = '';
+    state.status = '';
+    state.heldBy = '';
     state.page = 1;
-    // reset UI
-    ['reg-search','reg-status','reg-location','reg-entity','reg-bv','reg-hod','reg-ft'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.value = '';
-    });
+
+    if (container) {
+      container.innerHTML = buildShell();
+      bindTopbarActions(container);
+    }
     fetchAndRender();
   }
 
@@ -110,9 +153,14 @@ const RegisterModule = (() => {
 
     const params = {
       page: state.page, pageSize: state.pageSize,
-      search: state.search, status: state.status,
-      location: state.location, entity: state.entity,
-      businessVertical: state.businessVertical, hod: state.hod, fileType: state.fileType,
+      search: state.search,
+      category: state.category,
+      subCategory: state.subCategory,
+      filesCount: state.filesCount,
+      location: state.location,
+      binLocation: state.binLocation,
+      status: state.status,
+      heldBy: state.heldBy,
       includeArchived: state.status === 'Archived' ? 'true' : 'false',
     };
 

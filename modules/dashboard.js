@@ -44,11 +44,11 @@ const DashboardModule = (() => {
     const statsGrid = `
       <div class="stats-grid">
         ${statCard('📁', s.total || 0, 'Total Registers', 'blue')}
-        ${statCard('📄', s.totalFiles || 0, 'Files Inside', 'blue')}
+        ${statCard('📄', s.totalFiles || 0, 'Files Inside', 'teal')}
         ${statCard('✅', s.inOffice || 0, 'In Office', 'green')}
         ${statCard('📤', s.checkedOut || 0, 'Checked Out', 'orange')}
         ${statCard('🔴', s.overdue || 0, 'Overdue', 'red')}
-        ${statCard('🗄️', s.archived || 0, 'Archived', 'gray')}
+        ${statCard('🗄️', s.archived || 0, 'Archived', 'purple')}
       </div>`;
 
     const byLoc = data.byLocation || {};
@@ -115,7 +115,7 @@ const DashboardModule = (() => {
 
   function statCard(icon, value, label, color) {
     return `
-      <div class="stat-card">
+      <div class="stat-card stat-${color}">
         <div class="stat-icon ${color}">${icon}</div>
         <div class="stat-value">${value}</div>
         <div class="stat-label">${label}</div>
