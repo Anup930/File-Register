@@ -3,6 +3,7 @@ const RegisterModule = (() => {
   let state = {
     page: 1, pageSize: 50, total: 0, pages: 0,
     search: '', category: '', subCategory: '', filesCount: '', location: '', binLocation: '', status: '', heldBy: '',
+    oldFileNumber: '',
     files: [], allFiles: [], // allFiles used for CSV export
     stats: null, // cached dashboard stats
   };
@@ -42,7 +43,7 @@ const RegisterModule = (() => {
     const bins          = lsts['Bin Locations'] || [];
     const hods          = lsts['HODs'] || [];
     const statuses      = ['In office', 'Checked out', 'Archived', 'Missing'];
-    const hasActive = !!(state.search || state.category || state.subCategory || state.filesCount || state.location || state.binLocation || state.status || state.heldBy);
+    const hasActive = !!(state.search || state.category || state.subCategory || state.filesCount || state.location || state.binLocation || state.status || state.heldBy || state.oldFileNumber);
 
     const s = state.stats || {};
     const totalVal      = s.total !== undefined ? s.total : '…';
@@ -52,7 +53,7 @@ const RegisterModule = (() => {
 
     return `
       <div class="toolbar">
-        <!-- Row 1: Search + Reset button + 4 Live Stat Cards in marked space -->
+        <!-- Row 1: Search + Reset button + 4 Live Stat Cards + Old File Dropdown in marked space -->
         <div class="toolbar-row1">
           <div class="search-wrap">
             <span class="search-icon">🔍</span>
@@ -92,6 +93,24 @@ const RegisterModule = (() => {
               <div class="stat-mini-info">
                 <span class="stat-mini-val" id="reg-stat-overdue">${overdueVal}</span>
                 <span class="stat-mini-lbl">Overdue</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Old File Number Dropdown (Red Marked Space) -->
+          <div class="old-file-dropdown-wrap" id="reg-old-file-wrap">
+            <button type="button" class="old-file-trigger ${state.oldFileNumber ? 'filter-active' : ''}" id="reg-old-file-btn" title="Search & filter by Old File Number">
+              <span class="old-file-tag">Old File:</span>
+              <span class="old-file-current" id="reg-old-file-label">${state.oldFileNumber || 'All'}</span>
+              <span class="old-file-caret">▾</span>
+            </button>
+            <div class="old-file-popover" id="reg-old-file-popover" style="display:none;">
+              <div class="old-file-search-row">
+                <span class="search-icon">🔍</span>
+                <input type="text" class="old-file-search-input" id="reg-old-file-search" placeholder="Type to search old file no…">
+              </div>
+              <div class="old-file-list" id="reg-old-file-list">
+                <!-- Rendered dynamically -->
               </div>
             </div>
           </div>
@@ -166,6 +185,95 @@ const RegisterModule = (() => {
       });
     });
 
+    // Setup Old File Number Searchable Dropdown
+    let oldFilesList = App.config?.oldFileNumbers || [];
+
+    const oldFileBtn     = document.getElementById('reg-old-file-btn');
+    const oldFilePopover = document.getElementById('reg-old-file-popover');
+    const oldFileSearch  = document.getElementById('reg-old-file-search');
+    const oldFileListEl  = document.getElementById('reg-old-file-list');
+
+    function renderOldFileOptions(filterText = '') {
+      if (!oldFileListEl) return;
+      const q = filterText.trim().toLowerCase();
+      let matched = oldFilesList.filter(n => !q || String(n).toLowerCase().includes(q));
+
+      let html = `
+        <div class="old-file-item ${!state.oldFileNumber ? 'selected' : ''}" data-val="">
+          <span>— All Old Files —</span>
+          ${!state.oldFileNumber ? '<span>✓</span>' : ''}
+        </div>`;
+
+      if (matched.length === 0) {
+        html += `<div class="old-file-empty">No matching old file no.</div>`;
+      } else {
+        html += matched.map(num => `
+          <div class="old-file-item ${state.oldFileNumber === num ? 'selected' : ''}" data-val="${num}">
+            <span>${num}</span>
+            ${state.oldFileNumber === num ? '<span>✓</span>' : ''}
+          </div>
+        `).join('');
+      }
+      oldFileListEl.innerHTML = html;
+
+      oldFileListEl.querySelectorAll('.old-file-item').forEach(item => {
+        item.addEventListener('click', () => {
+          const val = item.dataset.val;
+          state.oldFileNumber = val;
+          state.page = 1;
+          const lbl = document.getElementById('reg-old-file-label');
+          if (lbl) lbl.textContent = val || 'All';
+          oldFileBtn?.classList.toggle('filter-active', !!val);
+          if (oldFilePopover) oldFilePopover.style.display = 'none';
+
+          const resetBtn = document.getElementById('btn-clear-filters');
+          if (resetBtn) {
+            const anyActive = !!(state.search || state.category || state.subCategory || state.filesCount || state.location || state.binLocation || state.status || state.heldBy || state.oldFileNumber);
+            resetBtn.classList.toggle('has-active', anyActive);
+          }
+
+          fetchAndRender();
+        });
+      });
+    }
+
+    renderOldFileOptions();
+
+    // Auto-fetch if not already present in App.config
+    if (!oldFilesList.length && APPS_SCRIPT_URL !== 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') {
+      api('getOldFileNumbers').then(list => {
+        if (Array.isArray(list) && list.length) {
+          oldFilesList = list;
+          if (!App.config) App.config = {};
+          App.config.oldFileNumbers = list;
+          renderOldFileOptions(oldFileSearch ? oldFileSearch.value : '');
+        }
+      }).catch(() => {});
+    }
+
+    if (oldFileBtn && oldFilePopover) {
+      oldFileBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const isOpen = oldFilePopover.style.display !== 'none';
+        oldFilePopover.style.display = isOpen ? 'none' : 'flex';
+        if (!isOpen && oldFileSearch) {
+          oldFileSearch.value = '';
+          renderOldFileOptions('');
+          setTimeout(() => oldFileSearch.focus(), 50);
+        }
+      });
+
+      oldFileSearch?.addEventListener('input', (e) => {
+        renderOldFileOptions(e.target.value);
+      });
+
+      document.addEventListener('click', (e) => {
+        if (!e.target.closest('#reg-old-file-wrap')) {
+          if (oldFilePopover) oldFilePopover.style.display = 'none';
+        }
+      });
+    }
+
     const searchEl = document.getElementById('reg-search');
     if (searchEl) searchEl.addEventListener('input', e => {
       clearTimeout(debounceTimer);
@@ -193,7 +301,7 @@ const RegisterModule = (() => {
         // Toggle reset button state
         const resetBtn = document.getElementById('btn-clear-filters');
         if (resetBtn) {
-          const anyActive = !!(state.search || state.category || state.subCategory || state.filesCount || state.location || state.binLocation || state.status || state.heldBy);
+          const anyActive = !!(state.search || state.category || state.subCategory || state.filesCount || state.location || state.binLocation || state.status || state.heldBy || state.oldFileNumber);
           resetBtn.classList.toggle('has-active', anyActive);
         }
 
@@ -211,6 +319,7 @@ const RegisterModule = (() => {
     state.binLocation = '';
     state.status = '';
     state.heldBy = '';
+    state.oldFileNumber = '';
     state.page = 1;
 
     if (container) {
@@ -240,6 +349,7 @@ const RegisterModule = (() => {
       binLocation: state.binLocation,
       status: state.status,
       heldBy: state.heldBy,
+      oldFileNumber: state.oldFileNumber,
       includeArchived: state.status === 'Archived' ? 'true' : 'false',
     };
 
@@ -351,8 +461,8 @@ const RegisterModule = (() => {
         const action = btn.dataset.action;
         if      (action === 'view')     navigate(`#file/${encodeURIComponent(fn)}`);
         else if (action === 'edit')     navigate(`#edit/${encodeURIComponent(fn)}`);
-        else if (action === 'checkout') CheckoutModule.openCheckout(fn, () => { fetchAndRender(); loadRegisterStats(document.getElementById('content')); });
-        else if (action === 'return')   CheckoutModule.openReturn(fn, () => { fetchAndRender(); loadRegisterStats(document.getElementById('content')); });
+        else if (action === 'checkout') CheckoutModule.openCheckout(fn, () => fetchAndRender());
+        else if (action === 'return')   CheckoutModule.openReturn(fn, () => fetchAndRender());
         else if (action === 'sticker')  StickerModule.openSticker(fn);
         else if (action === 'delete')   doDelete(fn);
       });
@@ -365,7 +475,7 @@ const RegisterModule = (() => {
   function doDelete(fn) {
     confirmDialog(`Permanently delete file <strong>${fn}</strong>? This cannot be undone.`, () => {
       api('deleteFile', {}, { action: 'deleteFile', fileNumber: fn, deletedBy: App.user })
-        .then(() => { toast('File deleted', 'success'); fetchAndRender(); loadRegisterStats(document.getElementById('content')); })
+        .then(() => { toast('File deleted', 'success'); fetchAndRender(); })
         .catch(err => toast('Delete failed: ' + err.message, 'error'));
     }, 'Delete');
   }
@@ -373,7 +483,7 @@ const RegisterModule = (() => {
   function exportAll() {
     if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') { toast('Connect Apps Script first', 'warning'); return; }
     toast('Fetching all files for export…');
-    const params = { page: 1, pageSize: 5000, search: state.search, status: state.status, location: state.location, entity: state.entity, businessVertical: state.businessVertical, hod: state.hod, fileType: state.fileType, includeArchived: 'true' };
+    const params = { page: 1, pageSize: 5000, search: state.search, status: state.status, location: state.location, entity: state.entity, businessVertical: state.businessVertical, hod: state.hod, fileType: state.fileType, oldFileNumber: state.oldFileNumber, includeArchived: 'true' };
     api('getFiles', params).then(data => {
       exportToCSV(data.files || [], `file-register-${new Date().toISOString().slice(0,10)}.csv`);
       toast('CSV exported', 'success');
