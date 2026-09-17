@@ -78,9 +78,9 @@ const DashboardModule = (() => {
       <div class="activity-item">
         <div class="activity-dot ${activityDotColor(a.action)}"></div>
         <div class="activity-body">
-          <div class="activity-action">${a.action} — <a href="#file/${encodeURIComponent(a.fileNumber)}">${a.fileNumber}</a></div>
-          <div class="activity-detail">${a.details || ''}</div>
-          <div class="activity-meta">by ${a.actor || '—'} · ${fmtDateTime(a.timestamp)}</div>
+          <div class="activity-action">${escapeHTML(a.action)} — <a href="#file/${encodeURIComponent(a.fileNumber)}">${escapeHTML(a.fileNumber)}</a></div>
+          <div class="activity-detail">${formatActivityDetail(a.details || '')}</div>
+          <div class="activity-meta">by <strong>${escapeHTML(a.actor || '—')}</strong> · ${fmtDateTime(a.timestamp)}</div>
         </div>
       </div>`).join('') || '<p style="color:var(--gray-500);text-align:center;padding:24px">No activity yet</p>';
 

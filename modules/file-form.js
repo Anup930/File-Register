@@ -42,6 +42,7 @@ const FileFormModule = (() => {
 
       topbarActions.innerHTML = `
         <button class="btn btn-secondary btn-sm" id="d-btn-back">← Register</button>
+        <button class="btn btn-warning btn-sm" id="d-btn-quick-status" style="font-weight:600;">⚡ Change Status / Location</button>
         <button class="btn btn-secondary btn-sm" id="d-btn-edit">✏️ Edit</button>
         <button class="btn btn-${file.status === 'Checked out' ? 'success' : 'warning'} btn-sm" id="d-btn-checkout">
           ${file.status === 'Checked out' ? '↩️ Return' : '📤 Check Out'}
@@ -52,6 +53,15 @@ const FileFormModule = (() => {
       container.innerHTML = buildDetailHTML(file, log, regFiles);
 
       qs('#d-btn-back')?.addEventListener('click', () => navigate('#register'));
+      qs('#d-btn-quick-status')?.addEventListener('click', () => {
+        CheckoutModule.openQuickStatusLocation(file, () => renderDetail(container, topbarActions, fileNumber));
+      });
+      qs('#d-btn-card-quick-status')?.addEventListener('click', () => {
+        CheckoutModule.openQuickStatusLocation(file, () => renderDetail(container, topbarActions, fileNumber));
+      });
+      qs('#d-badge-status-trigger')?.addEventListener('click', () => {
+        CheckoutModule.openQuickStatusLocation(file, () => renderDetail(container, topbarActions, fileNumber));
+      });
       qs('#d-btn-edit')?.addEventListener('click', () => navigate(`#edit/${encodeURIComponent(fileNumber)}`));
       qs('#d-btn-sticker')?.addEventListener('click', () => StickerModule.openStickerFromFile(file));
       qs('#d-btn-delete')?.addEventListener('click', () => {
@@ -124,9 +134,9 @@ const FileFormModule = (() => {
       <div class="activity-item">
         <div class="activity-dot ${activityDotColor(a.action)}"></div>
         <div class="activity-body">
-          <div class="activity-action">${a.action}</div>
-          <div class="activity-detail">${a.details || ''}</div>
-          <div class="activity-meta">by ${a.actor || '—'} · ${fmtDateTime(a.timestamp)}</div>
+          <div class="activity-action">${escapeHTML(a.action)}</div>
+          <div class="activity-detail">${formatActivityDetail(a.details || '')}</div>
+          <div class="activity-meta">by <strong>${escapeHTML(a.actor || '—')}</strong> · ${fmtDateTime(a.timestamp)}</div>
         </div>
       </div>`).join('') || '<p style="color:var(--gray-500);text-align:center;padding:24px">No activity recorded</p>';
 
@@ -180,7 +190,10 @@ const FileFormModule = (() => {
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
               <span class="badge" style="background:var(--primary-light);color:var(--primary);font-size:.85rem;padding:4px 10px;">📂 ${regFiles.length} Files Inside</span>
-              ${statusBadge(file.status)}
+              <span id="d-badge-status-trigger" style="cursor:pointer;" title="Click to change status or location">
+                ${statusBadge(file.status)} <span class="quick-edit-hint" style="opacity:1;">✏️</span>
+              </span>
+              <button class="btn btn-sm" id="d-btn-card-quick-status" style="font-size:0.75rem;padding:3px 10px;font-weight:600;background:#fef7e0;color:#b06000;border:1px solid #feefc3;" title="Change Status, Location, Bin">⚡ Change</button>
             </div>
           </div>
           ${overdue ? `<div style="background:var(--danger-bg);color:var(--danger);padding:8px 20px;font-size:.85rem;font-weight:600">⚠️ Overdue — Due ${fmtDate(file.dueDate)}, held by ${file.heldBy}</div>` : ''}

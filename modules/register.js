@@ -404,14 +404,21 @@ const RegisterModule = (() => {
             </a>
           </td>
           <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${f.details}">${f.details || '—'}</td>
-          <td>${f.location || '—'}</td>
-          <td style="font-family:monospace;font-size:.8rem">${f.binLocation || '—'}</td>
-          <td>${statusBadge(f.status)}</td>
+          <td class="col-location-cell" data-action="quick-update" data-fn="${f.fileNumber}" style="cursor:pointer;" title="Click to change location">
+            ${f.location || '—'} <span class="quick-edit-hint">✏️</span>
+          </td>
+          <td class="col-bin-cell" data-action="quick-update" data-fn="${f.fileNumber}" style="font-family:monospace;font-size:.8rem;cursor:pointer;" title="Click to change bin location">
+            ${f.binLocation || '—'} <span class="quick-edit-hint">✏️</span>
+          </td>
+          <td class="col-status-cell" data-action="quick-update" data-fn="${f.fileNumber}" style="cursor:pointer;" title="Click to quickly change status or location">
+            ${statusBadge(f.status)} <span class="quick-edit-hint">⚡</span>
+          </td>
           <td>${f.heldBy ? `<span title="Due: ${fmtDate(f.dueDate)}">${f.heldBy}${overdue ? ' ⚠️' : ''}</span>` : '—'}</td>
           <td>
             <div class="col-actions">
-              <button class="btn btn-ghost btn-icon btn-sm" data-action="view" data-fn="${f.fileNumber}" title="View">👁</button>
-              <button class="btn btn-ghost btn-icon btn-sm" data-action="edit" data-fn="${f.fileNumber}" title="Edit">✏️</button>
+              <button class="btn btn-ghost btn-icon btn-sm" data-action="view" data-fn="${f.fileNumber}" title="View Details">👁</button>
+              <button class="btn btn-sm btn-icon" data-action="quick-update" data-fn="${f.fileNumber}" title="⚡ Change Status, Location & Bin" style="color:#b06000;background:#fef7e0;border:1px solid #feefc3;font-weight:bold;">⚡</button>
+              <button class="btn btn-ghost btn-icon btn-sm" data-action="edit" data-fn="${f.fileNumber}" title="Full Edit">✏️</button>
               <button class="btn btn-ghost btn-icon btn-sm" data-action="${f.status === 'Checked out' ? 'return' : 'checkout'}" data-fn="${f.fileNumber}" title="${f.status === 'Checked out' ? 'Return' : 'Check Out'}">
                 ${f.status === 'Checked out' ? '↩️' : '📤'}
               </button>
@@ -455,18 +462,33 @@ const RegisterModule = (() => {
   }
 
   function bindTableActions(wrap) {
-    wrap.querySelectorAll('[data-action]').forEach(btn => {
-      btn.addEventListener('click', () => {
+    wrap.querySelectorAll('.col-actions button').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
         const fn = btn.dataset.fn;
         const action = btn.dataset.action;
-        if      (action === 'view')     navigate(`#file/${encodeURIComponent(fn)}`);
-        else if (action === 'edit')     navigate(`#edit/${encodeURIComponent(fn)}`);
-        else if (action === 'checkout') CheckoutModule.openCheckout(fn, () => fetchAndRender());
-        else if (action === 'return')   CheckoutModule.openReturn(fn, () => fetchAndRender());
-        else if (action === 'sticker')  StickerModule.openSticker(fn);
-        else if (action === 'delete')   doDelete(fn);
+        if      (action === 'view')         navigate(`#file/${encodeURIComponent(fn)}`);
+        else if (action === 'quick-update') {
+          const file = state.files.find(x => x.fileNumber === fn) || fn;
+          CheckoutModule.openQuickStatusLocation(file, () => fetchAndRender());
+        }
+        else if (action === 'edit')         navigate(`#edit/${encodeURIComponent(fn)}`);
+        else if (action === 'checkout')     CheckoutModule.openCheckout(fn, () => fetchAndRender());
+        else if (action === 'return')       CheckoutModule.openReturn(fn, () => fetchAndRender());
+        else if (action === 'sticker')      StickerModule.openSticker(fn);
+        else if (action === 'delete')       doDelete(fn);
       });
     });
+
+    wrap.querySelectorAll('td[data-action="quick-update"]').forEach(cell => {
+      cell.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const fn = cell.dataset.fn;
+        const file = state.files.find(x => x.fileNumber === fn) || fn;
+        CheckoutModule.openQuickStatusLocation(file, () => fetchAndRender());
+      });
+    });
+
     wrap.querySelectorAll('.page-btn:not([disabled])').forEach(btn => {
       btn.addEventListener('click', () => { state.page = parseInt(btn.dataset.p); fetchAndRender(); });
     });
