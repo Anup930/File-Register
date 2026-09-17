@@ -22,6 +22,7 @@ document.addEventListener('DOMContentLoaded', () => {
   initRouter();
   initSidebar();
   loadConfig();
+  initUpdatesUI();
 });
 
 // ── USER (localStorage) ───────────────────────────────────────
@@ -32,6 +33,8 @@ function initUser() {
   } else {
     App.user = saved;
     updateUserUI();
+    // Show smart card on page load / refresh
+    setTimeout(showStartupUpdatesCard, 600);
   }
 }
 
@@ -51,6 +54,8 @@ function showNamePrompt() {
     updateUserUI();
     loadConfig();
     navigate(location.hash || '#dashboard');
+    // Show smart card on login
+    setTimeout(showStartupUpdatesCard, 400);
   };
 
   btn.addEventListener('click', submit);
@@ -649,4 +654,125 @@ function activityDotColor(action) {
   if (action === 'Deleted') return 'red';
   if (action === 'Checked out') return 'orange';
   return '';
+}
+
+// ── UPDATES & ROADMAP SMART CARD MODAL ─────────────────────────
+function initUpdatesUI() {
+  document.getElementById('topbar-updates-btn')?.addEventListener('click', (e) => {
+    e.preventDefault();
+    showStartupUpdatesCard();
+  });
+}
+
+function showStartupUpdatesCard() {
+  // Prevent duplicate if already open
+  if (document.getElementById('updates-smart-card-modal')) return;
+
+  const overlay = openModal({
+    title: `
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span style="font-size:1.35rem;">🚀</span>
+        <div>
+          <div style="font-size:1.05rem;font-weight:700;color:var(--gray-900);line-height:1.2;">System Updates & Roadmap</div>
+          <div style="font-size:0.75rem;color:var(--gray-600);font-weight:normal;">Gretex Group • Physical File Register v1.1</div>
+        </div>
+      </div>`,
+    size: 'modal-lg',
+    body: `
+      <div id="updates-smart-card-modal" class="updates-smart-card-wrap">
+        <!-- Banner Card -->
+        <div style="background:linear-gradient(135deg,#0d47a1 0%,#1976d2 100%);color:white;border-radius:12px;padding:16px 20px;margin-bottom:18px;box-shadow:0 4px 14px rgba(25,118,210,0.25);">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
+            <div>
+              <strong style="font-size:1.02rem;display:block;">Development & Feature Status</strong>
+              <span style="font-size:0.82rem;opacity:0.9;">Track which features are completed, in progress, or pending.</span>
+            </div>
+            <span style="background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.35);padding:4px 12px;border-radius:20px;font-size:0.82rem;font-weight:700;">
+              2 of 5 Done (40%)
+            </span>
+          </div>
+          <div style="width:100%;height:8px;background:rgba(255,255,255,0.25);border-radius:8px;overflow:hidden;">
+            <div style="width:40%;height:100%;background:#34a853;border-radius:8px;"></div>
+          </div>
+        </div>
+
+        <!-- 5 Requested Tasks List -->
+        <div style="display:flex;flex-direction:column;gap:10px;">
+
+          <!-- Task 1: Done -->
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#f8fafd;border:1px solid #ceead6;border-left:5px solid #188038;border-radius:8px;">
+            <div style="font-size:1.25rem;line-height:1;margin-top:2px;">🔍</div>
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                <strong style="color:#202124;font-size:0.92rem;">need to search file by old file number also</strong>
+                <span class="badge" style="background:#e6f4ea;color:#137333;font-weight:700;border:1px solid #ceead6;padding:3px 10px;">✅ Done</span>
+              </div>
+              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Toolbar Row 1 me dedicated Old File Number filter dropdown add ho gaya hai with instant sync.</p>
+            </div>
+          </div>
+
+          <!-- Task 2: Working -->
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#fffdfa;border:1px solid #feefc3;border-left:5px solid #e37400;border-radius:8px;">
+            <div style="font-size:1.25rem;line-height:1;margin-top:2px;">⚡</div>
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                <strong style="color:#202124;font-size:0.92rem;">Change of status , location, etc. option not showing</strong>
+                <span class="badge" style="background:#fef7e0;color:#b06000;font-weight:700;border:1px solid #feefc3;padding:3px 10px;">⚡ Working</span>
+              </div>
+              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Register rows pe fast status/location change action button active development me hai.</p>
+            </div>
+          </div>
+
+          <!-- Task 3: Pending -->
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#f8f9fa;border:1px solid #dadce0;border-left:5px solid #80868b;border-radius:8px;">
+            <div style="font-size:1.25rem;line-height:1;margin-top:2px;">🏷️</div>
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                <strong style="color:#202124;font-size:0.92rem;">Need Filter Data option for printing Stickers and then keep a track of printing stickers with date, time and person who had printed</strong>
+                <span class="badge" style="background:#f1f3f4;color:#5f6368;font-weight:700;border:1px solid #dadce0;padding:3px 10px;">⏳ Pending</span>
+              </div>
+              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Filtered batch sticker queue + audit trail tracking date, time, and operator name.</p>
+            </div>
+          </div>
+
+          <!-- Task 4: Pending -->
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#f8f9fa;border:1px solid #dadce0;border-left:5px solid #80868b;border-radius:8px;">
+            <div style="font-size:1.25rem;line-height:1;margin-top:2px;">📦</div>
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                <strong style="color:#202124;font-size:0.92rem;">Allott Bin No. to multiple files in bulk</strong>
+                <span class="badge" style="background:#f1f3f4;color:#5f6368;font-weight:700;border:1px solid #dadce0;padding:3px 10px;">⏳ Pending</span>
+              </div>
+              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Register me multi-select checkboxes & bulk Bin allotment modal.</p>
+            </div>
+          </div>
+
+          <!-- Task 5: Done -->
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#f8fafd;border:1px solid #ceead6;border-left:5px solid #188038;border-radius:8px;">
+            <div style="font-size:1.25rem;line-height:1;margin-top:2px;">📂</div>
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                <strong style="color:#202124;font-size:0.92rem;">Option to close the file - making it empty is also required</strong>
+                <span class="badge" style="background:#e6f4ea;color:#137333;font-weight:700;border:1px solid #ceead6;padding:3px 10px;">✅ Done</span>
+              </div>
+              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Files ko close/empty aur archive karne ka feature system me available & logged hai.</p>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    `,
+    footer: `
+      <div style="display:flex;justify-content:space-between;align-items:center;width:100%;">
+        <a href="updates.html" class="btn btn-secondary" style="font-size:0.85rem;" target="_blank">
+          View Full Updates Page ↗
+        </a>
+        <button class="btn btn-primary" id="btn-close-updates-modal" style="font-size:0.85rem;padding:8px 22px;">
+          Got it 👍
+        </button>
+      </div>
+    `
+  });
+
+  overlay.querySelector('#btn-close-updates-modal')?.addEventListener('click', closeModal);
 }

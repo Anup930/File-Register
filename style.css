@@ -508,6 +508,146 @@ tbody td { padding: 10px 14px; color: var(--gray-800); vertical-align: middle; }
   letter-spacing: 0.01em;
 }
 
+/* ── Old File Number Dropdown (Row 1 Red Marked Space) ────────── */
+.old-file-dropdown-wrap {
+  position: relative;
+  display: inline-block;
+  margin-left: auto;
+  margin-right: 24px;
+}
+
+.old-file-trigger {
+  height: 42px;
+  padding: 0 14px;
+  background: var(--white);
+  border: 1.5px solid var(--gray-300);
+  border-radius: var(--radius);
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-family: inherit;
+  font-size: 0.85rem;
+  color: var(--gray-800);
+  transition: all var(--transition);
+  box-shadow: var(--shadow-sm);
+  white-space: nowrap;
+  min-width: 170px;
+  justify-content: space-between;
+}
+
+.old-file-trigger:hover {
+  border-color: var(--primary);
+  background: var(--gray-50);
+}
+
+.old-file-trigger.filter-active {
+  border-color: var(--primary);
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.old-file-tag {
+  font-size: 0.72rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--gray-500);
+}
+
+.old-file-trigger.filter-active .old-file-tag {
+  color: var(--primary);
+}
+
+.old-file-current {
+  font-weight: 600;
+  max-width: 130px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.old-file-caret {
+  font-size: 0.75rem;
+  color: var(--gray-500);
+  transition: transform var(--transition);
+}
+
+.old-file-popover {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  width: 270px;
+  background: var(--white);
+  border: 1px solid var(--gray-300);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-lg);
+  z-index: 150;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  animation: fadeIn 0.15s ease;
+}
+
+.old-file-search-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--gray-200);
+  background: var(--gray-50);
+}
+
+.old-file-search-row .search-icon {
+  font-size: 0.85rem;
+  color: var(--gray-500);
+}
+
+.old-file-search-input {
+  border: none;
+  background: transparent;
+  outline: none;
+  font-size: 0.85rem;
+  width: 100%;
+  color: var(--gray-900);
+}
+
+.old-file-list {
+  max-height: 240px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.old-file-item {
+  padding: 8px 14px;
+  font-size: 0.84rem;
+  color: var(--gray-800);
+  cursor: pointer;
+  transition: background var(--transition);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.old-file-item:hover {
+  background: var(--gray-100);
+  color: var(--primary);
+}
+
+.old-file-item.selected {
+  background: var(--primary-light);
+  color: var(--primary);
+  font-weight: 600;
+}
+
+.old-file-empty {
+  padding: 16px;
+  text-align: center;
+  color: var(--gray-500);
+  font-size: 0.82rem;
+}
+
 .search-wrap .search-icon {
   position: absolute;
   left: 11px;

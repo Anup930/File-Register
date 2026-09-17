@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>System Updates & Roadmap — Gretex File Register</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@400;500;600;700&family=Roboto+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    :root {
+      --primary: #1a73e8;
+      --primary-dark: #1557b0;
+      --primary-light: #e8f0fe;
+      --success: #188038;
+      --success-bg: #e6f4ea;
+      --warning: #e37400;
+      --warning-bg: #fef7e0;
+      --pending: #5f6368;
+      --pending-bg: #f1f3f4;
+      --bg: #f8fafd;
+      --card-bg: #ffffff;
+      --border: #dadce0;
+      --text-main: #202124;
+      --text-muted: #5f6368;
+      --radius: 12px;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.08), 0 1px 2px rgba(0,0,0,0.04);
+      --shadow-md: 0 4px 14px rgba(0,0,0,0.08), 0 2px 6px rgba(0,0,0,0.04);
+      --shadow-hover: 0 10px 25px rgba(26,115,232,0.12), 0 4px 10px rgba(0,0,0,0.06);
+    }
+    body {
+      font-family: 'Google Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background-color: var(--bg);
+      color: var(--text-main);
+      line-height: 1.5;
+      padding: 0;
+      margin: 0;
+    }
+    header {
+      background: linear-gradient(135deg, #0d47a1 0%, #1976d2 50%, #1a73e8 100%);
+      color: white;
+      padding: 40px 24px 32px;
+      box-shadow: 0 4px 20px rgba(13,71,161,0.25);
+    }
+    .header-container {
+      max-width: 1000px;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .brand-area {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .brand-icon {
+      width: 52px;
+      height: 52px;
+      background: rgba(255,255,255,0.2);
+      backdrop-filter: blur(10px);
+      border-radius: 14px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 26px;
+      border: 1px solid rgba(255,255,255,0.3);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+    }
+    .brand-title h1 {
+      font-size: 1.65rem;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      margin-bottom: 4px;
+    }
+    .brand-title p {
+      font-size: 0.92rem;
+      color: rgba(255,255,255,0.88);
+    }
+    .header-actions {
+      display: flex;
+      gap: 12px;
+    }
+    .btn-action {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 18px;
+      border-radius: 8px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      text-decoration: none;
+      transition: all 0.2s;
+      cursor: pointer;
+    }
+    .btn-back {
+      background: white;
+      color: #0d47a1;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+    }
+    .btn-back:hover {
+      background: #f1f3f4;
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+    }
+    .main-wrapper {
+      max-width: 1000px;
+      margin: -24px auto 60px;
+      padding: 0 20px;
+    }
+    
+    /* Stats Bar */
+    .summary-card {
+      background: white;
+      border-radius: var(--radius);
+      padding: 24px 28px;
+      box-shadow: var(--shadow-md);
+      border: 1px solid var(--border);
+      margin-bottom: 28px;
+    }
+    .stats-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 16px;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+    .stats-title {
+      font-size: 1.1rem;
+      font-weight: 700;
+      color: var(--text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .progress-pill {
+      font-size: 0.85rem;
+      font-weight: 700;
+      background: #e8f0fe;
+      color: #1a73e8;
+      padding: 4px 12px;
+      border-radius: 20px;
+    }
+    .progress-bar-wrap {
+      width: 100%;
+      height: 12px;
+      background: #e8eaed;
+      border-radius: 10px;
+      overflow: hidden;
+      margin-bottom: 20px;
+      position: relative;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      width: 40%;
+      background: linear-gradient(90deg, #188038 0%, #34a853 100%);
+      border-radius: 10px;
+      transition: width 0.6s ease;
+    }
+    .stat-counters {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      text-align: center;
+    }
+    .stat-pill {
+      padding: 12px 8px;
+      border-radius: 10px;
+      border: 1px solid transparent;
+      transition: transform 0.2s;
+    }
+    .stat-pill:hover { transform: translateY(-2px); }
+    .stat-pill.total { background: #f8f9fa; border-color: #dadce0; }
+    .stat-pill.done { background: #e6f4ea; border-color: #ceead6; color: #137333; }
+    .stat-pill.working { background: #fef7e0; border-color: #feefc3; color: #b06000; }
+    .stat-pill.pending { background: #f1f3f4; border-color: #dadce0; color: #5f6368; }
+    .stat-count {
+      font-size: 1.6rem;
+      font-weight: 700;
+      line-height: 1;
+      margin-bottom: 4px;
+    }
+    .stat-name {
+      font-size: 0.8rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    /* Filter Tabs */
+    .filter-tabs {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+    .tab-btn {
+      background: white;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-size: 0.88rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      transition: all 0.2s;
+    }
+    .tab-btn:hover {
+      background: #f1f3f4;
+      color: var(--text-main);
+    }
+    .tab-btn.active {
+      background: var(--primary);
+      color: white;
+      border-color: var(--primary);
+      box-shadow: 0 2px 6px rgba(26,115,232,0.3);
+    }
+
+    /* Roadmap Cards List */
+    .roadmap-list {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+    .roadmap-card {
+      background: white;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 22px 24px;
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      gap: 20px;
+      align-items: flex-start;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .roadmap-card::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 5px;
+    }
+    .roadmap-card.status-done::before { background: #188038; }
+    .roadmap-card.status-working::before { background: #e37400; }
+    .roadmap-card.status-pending::before { background: #80868b; }
+
+    .roadmap-card:hover {
+      box-shadow: var(--shadow-hover);
+      transform: translateY(-2px);
+      border-color: #bdc1c6;
+    }
+    .card-icon-wrap {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 20px;
+      flex-shrink: 0;
+    }
+    .status-done .card-icon-wrap { background: #e6f4ea; color: #188038; }
+    .status-working .card-icon-wrap { background: #fef7e0; color: #e37400; }
+    .status-pending .card-icon-wrap { background: #f1f3f4; color: #5f6368; }
+
+    .card-content {
+      flex: 1;
+    }
+    .card-top {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      gap: 12px;
+      margin-bottom: 6px;
+      flex-wrap: wrap;
+    }
+    .card-title {
+      font-size: 1.05rem;
+      font-weight: 700;
+      color: var(--text-main);
+      line-height: 1.35;
+    }
+    .badge-status {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 4px 12px;
+      border-radius: 100px;
+      font-size: 0.8rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .badge-status.done {
+      background: #e6f4ea;
+      color: #137333;
+      border: 1px solid #ceead6;
+    }
+    .badge-status.working {
+      background: #fef7e0;
+      color: #b06000;
+      border: 1px solid #feefc3;
+    }
+    .badge-status.pending {
+      background: #f1f3f4;
+      color: #5f6368;
+      border: 1px solid #dadce0;
+    }
+    .card-meta {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 10px;
+      font-size: 0.8rem;
+      color: var(--text-muted);
+    }
+    .meta-tag {
+      background: #f8f9fa;
+      padding: 2px 8px;
+      border-radius: 4px;
+      border: 1px solid #e8eaed;
+      font-weight: 600;
+    }
+    .card-desc {
+      font-size: 0.92rem;
+      color: #3c4043;
+      margin-bottom: 8px;
+    }
+    .card-highlights {
+      list-style: none;
+      padding: 0;
+      margin: 8px 0 0;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .card-highlights li {
+      font-size: 0.85rem;
+      color: #5f6368;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .card-highlights li::before {
+      content: '•';
+      color: var(--primary);
+      font-weight: bold;
+    }
+
+    footer {
+      text-align: center;
+      padding: 24px;
+      color: var(--text-muted);
+      font-size: 0.85rem;
+      border-top: 1px solid var(--border);
+      background: white;
+    }
+
+    @media (max-width: 650px) {
+      .stat-counters { grid-template-columns: repeat(2, 1fr); }
+      .header-container { flex-direction: column; align-items: flex-start; }
+      .roadmap-card { flex-direction: column; gap: 12px; }
+      .brand-title h1 { font-size: 1.4rem; }
+    }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-container">
+    <div class="brand-area">
+      <div class="brand-icon">📂</div>
+      <div class="brand-title">
+        <h1>Physical File Register — System Updates</h1>
+        <p>Gretex Group • Active Feature Tracking & Development Roadmap</p>
+      </div>
+    </div>
+    <div class="header-actions">
+      <a href="index.html#register" class="btn-action btn-back">← Back to App</a>
+    </div>
+  </div>
+</header>
+
+<div class="main-wrapper">
+
+  <!-- Summary Statistics -->
+  <div class="summary-card">
+    <div class="stats-header">
+      <div class="stats-title">
+        <span>⚡ Project Progress & Milestone Status</span>
+      </div>
+      <div class="progress-pill">2 of 5 Tasks Completed (40%)</div>
+    </div>
+
+    <div class="progress-bar-wrap">
+      <div class="progress-bar-fill"></div>
+    </div>
+
+    <div class="stat-counters">
+      <div class="stat-pill total">
+        <div class="stat-count">5</div>
+        <div class="stat-name">Total Tasks</div>
+      </div>
+      <div class="stat-pill done">
+        <div class="stat-count">2</div>
+        <div class="stat-name">Completed</div>
+      </div>
+      <div class="stat-pill working">
+        <div class="stat-count">1</div>
+        <div class="stat-name">In Progress</div>
+      </div>
+      <div class="stat-pill pending">
+        <div class="stat-count">2</div>
+        <div class="stat-name">Pending</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Filter tabs -->
+  <div class="filter-tabs">
+    <button class="tab-btn active" onclick="filterTasks('all', this)">All Items (5)</button>
+    <button class="tab-btn" onclick="filterTasks('done', this)">✅ Done (2)</button>
+    <button class="tab-btn" onclick="filterTasks('working', this)">⚡ Working (1)</button>
+    <button class="tab-btn" onclick="filterTasks('pending', this)">⏳ Pending (2)</button>
+  </div>
+
+  <!-- Roadmap Cards List -->
+  <div class="roadmap-list" id="task-list">
+
+    <!-- Card 1: Old File Number Search -->
+    <div class="roadmap-card status-done" data-status="done">
+      <div class="card-icon-wrap">🔍</div>
+      <div class="card-content">
+        <div class="card-top">
+          <h2 class="card-title">Need to search file by old file number also</h2>
+          <span class="badge-status done">✓ Done</span>
+        </div>
+        <div class="card-meta">
+          <span class="meta-tag">Search & Register</span>
+          <span>Updated in v1.1</span>
+        </div>
+        <p class="card-desc">
+          Added a dedicated <strong>Old File Number</strong> searchable dropdown filter directly next to the primary search bar with proper right margin.
+        </p>
+        <ul class="card-highlights">
+          <li>Displays unique Old File Numbers list dynamically populated from Google Sheets.</li>
+          <li>Instant live filtering on Register table with synchronized mini summary counters.</li>
+          <li>Full backend support in <code>Code.gs</code> via <code>getOldFileNumbers</code> and <code>oldFileNumber</code> filter parameter.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Card 2: Change of status, location -->
+    <div class="roadmap-card status-working" data-status="working">
+      <div class="card-icon-wrap">⚡</div>
+      <div class="card-content">
+        <div class="card-top">
+          <h2 class="card-title">Change of status , location, etc. option not showing</h2>
+          <span class="badge-status working">⚡ Working</span>
+        </div>
+        <div class="card-meta">
+          <span class="meta-tag">Fast Actions & State Management</span>
+          <span>Active Development</span>
+        </div>
+        <p class="card-desc">
+          Implementing direct quick-action popover / inline edit controls on the Register table so users can update Status, Physical Location, Bin No., and Assigned Holder immediately without navigating to the full edit form.
+        </p>
+        <ul class="card-highlights">
+          <li>Adding one-click quick update modal for instant status and location changes.</li>
+          <li>Ensuring smooth status changes with automatic Activity Log tracking.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Card 3: Filter Data option for printing Stickers & Tracking -->
+    <div class="roadmap-card status-pending" data-status="pending">
+      <div class="card-icon-wrap">🏷️</div>
+      <div class="card-content">
+        <div class="card-top">
+          <h2 class="card-title">Need Filter Data option for printing Stickers and then keep a track of printing stickers with date, time and person who had printed</h2>
+          <span class="badge-status pending">⏳ Pending</span>
+        </div>
+        <div class="card-meta">
+          <span class="meta-tag">Sticker Printing & Audit Trail</span>
+          <span>Scheduled Next</span>
+        </div>
+        <p class="card-desc">
+          Add comprehensive multi-field filtering (Client, Category, Location, Date Range, Status) to the Sticker Printing module so users can selectively generate stickers in batch, coupled with an audit log recording timestamp and operator name whenever stickers are generated or printed.
+        </p>
+        <ul class="card-highlights">
+          <li>Multi-filter criteria selection for selective batch sticker queue.</li>
+          <li>Print audit log recording Date, Time, and Operator Name.</li>
+          <li>Preview before printing spine and cover sticker labels.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Card 4: Allott Bin No. to multiple files in bulk -->
+    <div class="roadmap-card status-pending" data-status="pending">
+      <div class="card-icon-wrap">📦</div>
+      <div class="card-content">
+        <div class="card-top">
+          <h2 class="card-title">Allott Bin No. to multiple files in bulk</h2>
+          <span class="badge-status pending">⏳ Pending</span>
+        </div>
+        <div class="card-meta">
+          <span class="meta-tag">Bulk Operations</span>
+          <span>Queued</span>
+        </div>
+        <p class="card-desc">
+          Enable multi-row checkbox selection on the File Register table and introduce a bulk action button to assign or re-assign Bin Numbers to multiple files simultaneously in one single action.
+        </p>
+        <ul class="card-highlights">
+          <li>Batch selection checkboxes with "Select All" support.</li>
+          <li>Bulk Bin Allotment modal with autocomplete Bin Location selector.</li>
+          <li>Instant batch update via Apps Script backend.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Card 5: Option to close the file - making it empty -->
+    <div class="roadmap-card status-done" data-status="done">
+      <div class="card-icon-wrap">📂</div>
+      <div class="card-content">
+        <div class="card-top">
+          <h2 class="card-title">Option to close the file - making it empty is also required</h2>
+          <span class="badge-status done">✓ Done</span>
+        </div>
+        <div class="card-meta">
+          <span class="meta-tag">Lifecycle & Archival</span>
+          <span>Completed</span>
+        </div>
+        <p class="card-desc">
+          Integrated file closure and archiving workflow allowing files to be closed, contents marked empty / archived, and status safely retired while keeping historical logs intact.
+        </p>
+        <ul class="card-highlights">
+          <li>Supported in File Details and Register table actions.</li>
+          <li>Safe state management: marks as closed/archived with timestamp and user attribution.</li>
+          <li>Excluded from active counts while remaining fully searchable in archived history.</li>
+        </ul>
+      </div>
+    </div>
+
+  </div>
+
+</div>
+
+<footer>
+  Gretex Group • Physical File Register • System Roadmap & Task Tracker
+</footer>
+
+<script>
+  function filterTasks(status, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+
+    const cards = document.querySelectorAll('.roadmap-card');
+    cards.forEach(card => {
+      if (status === 'all' || card.getAttribute('data-status') === status) {
+        card.style.display = 'flex';
+      } else {
+        card.style.display = 'none';
+      }
+    });
+  }
+</script>
+
+</body>
+</html>
