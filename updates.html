@@ -398,16 +398,16 @@
       <div class="stats-title">
         <span>⚡ Project Progress & Milestone Status</span>
       </div>
-      <div class="progress-pill">4 of 5 Tasks Completed (80%)</div>
+      <div class="progress-pill">4 of 6 Tasks Completed (67%)</div>
     </div>
 
     <div class="progress-bar-wrap">
-      <div class="progress-bar-fill" style="width: 80%;"></div>
+      <div class="progress-bar-fill" style="width: 67%;"></div>
     </div>
 
     <div class="stat-counters">
       <div class="stat-pill total">
-        <div class="stat-count">5</div>
+        <div class="stat-count">6</div>
         <div class="stat-name">Total Tasks</div>
       </div>
       <div class="stat-pill done">
@@ -419,7 +419,7 @@
         <div class="stat-name">In Progress</div>
       </div>
       <div class="stat-pill pending">
-        <div class="stat-count">1</div>
+        <div class="stat-count">2</div>
         <div class="stat-name">Pending</div>
       </div>
     </div>
@@ -427,10 +427,10 @@
 
   <!-- Filter tabs -->
   <div class="filter-tabs">
-    <button class="tab-btn active" onclick="filterTasks('all', this)">All Items (5)</button>
+    <button class="tab-btn active" onclick="filterTasks('all', this)">All Items (6)</button>
     <button class="tab-btn" onclick="filterTasks('done', this)">✅ Done (4)</button>
     <button class="tab-btn" onclick="filterTasks('working', this)">⚡ Working (0)</button>
-    <button class="tab-btn" onclick="filterTasks('pending', this)">⏳ Pending (1)</button>
+    <button class="tab-btn" onclick="filterTasks('pending', this)">⏳ Pending (2)</button>
   </div>
 
   <!-- Roadmap Cards List -->
@@ -505,7 +505,30 @@
       </div>
     </div>
 
-    <!-- Card 4: Allott Bin No. to multiple files in bulk -->
+    <!-- Card 4: Sub categories not created as discussed -->
+    <div class="roadmap-card status-done" data-status="done">
+      <div class="card-icon-wrap">🗂️</div>
+      <div class="card-content">
+        <div class="card-top">
+          <h2 class="card-title">sub categories not created as discussed</h2>
+          <span class="badge-status done">✓ Done</span>
+        </div>
+        <div class="card-meta">
+          <span class="meta-tag">Master Data & Settings</span>
+          <span>Completed</span>
+        </div>
+        <p class="card-desc">
+          Configured and structured Subcategories in accordance with organizational hierarchy, enabling automated subcategory code generation, multi-select configuration, and synchronized dropdown selection across file registration.
+        </p>
+        <ul class="card-highlights">
+          <li>Complete subcategory catalog mapped to master classification codes.</li>
+          <li>Dynamic dropdown loading across Add File, Register filters, and Settings.</li>
+          <li>Integrated validation ensuring consistent subcategory tagging for all records.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Card 5: Allott Bin No. to multiple files in bulk -->
     <div class="roadmap-card status-pending" data-status="pending">
       <div class="card-icon-wrap">📦</div>
       <div class="card-content">
@@ -528,25 +551,25 @@
       </div>
     </div>
 
-    <!-- Card 5: Option to close the file - making it empty -->
-    <div class="roadmap-card status-done" data-status="done">
+    <!-- Card 6: Option to close the file - making it empty is also required -->
+    <div class="roadmap-card status-pending" data-status="pending">
       <div class="card-icon-wrap">📂</div>
       <div class="card-content">
         <div class="card-top">
           <h2 class="card-title">Option to close the file - making it empty is also required</h2>
-          <span class="badge-status done">✓ Done</span>
+          <span class="badge-status pending">⏳ Pending</span>
         </div>
         <div class="card-meta">
           <span class="meta-tag">Lifecycle & Archival</span>
-          <span>Completed</span>
+          <span>Queued</span>
         </div>
         <p class="card-desc">
-          Integrated file closure and archiving workflow allowing files to be closed, contents marked empty / archived, and status safely retired while keeping historical logs intact.
+          Provide dedicated workflow to close active files, empty assigned register contents, and transition records to archived state while retaining complete audit logs.
         </p>
         <ul class="card-highlights">
-          <li>Supported in File Details and Register table actions.</li>
-          <li>Safe state management: marks as closed/archived with timestamp and user attribution.</li>
-          <li>Excluded from active counts while remaining fully searchable in archived history.</li>
+          <li>Dedicated file closure and content emptying mechanism.</li>
+          <li>Audit logging with closure timestamps and operator attribution.</li>
+          <li>Clear visual indicator distinguishing active registers from closed/emptied files.</li>
         </ul>
       </div>
     </div>
