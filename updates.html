@@ -398,11 +398,11 @@
       <div class="stats-title">
         <span>⚡ Project Progress & Milestone Status</span>
       </div>
-      <div class="progress-pill">3 of 5 Tasks Completed (60%)</div>
+      <div class="progress-pill">4 of 5 Tasks Completed (80%)</div>
     </div>
 
     <div class="progress-bar-wrap">
-      <div class="progress-bar-fill" style="width: 60%;"></div>
+      <div class="progress-bar-fill" style="width: 80%;"></div>
     </div>
 
     <div class="stat-counters">
@@ -411,7 +411,7 @@
         <div class="stat-name">Total Tasks</div>
       </div>
       <div class="stat-pill done">
-        <div class="stat-count">3</div>
+        <div class="stat-count">4</div>
         <div class="stat-name">Completed</div>
       </div>
       <div class="stat-pill working">
@@ -419,7 +419,7 @@
         <div class="stat-name">In Progress</div>
       </div>
       <div class="stat-pill pending">
-        <div class="stat-count">2</div>
+        <div class="stat-count">1</div>
         <div class="stat-name">Pending</div>
       </div>
     </div>
@@ -428,9 +428,9 @@
   <!-- Filter tabs -->
   <div class="filter-tabs">
     <button class="tab-btn active" onclick="filterTasks('all', this)">All Items (5)</button>
-    <button class="tab-btn" onclick="filterTasks('done', this)">✅ Done (3)</button>
+    <button class="tab-btn" onclick="filterTasks('done', this)">✅ Done (4)</button>
     <button class="tab-btn" onclick="filterTasks('working', this)">⚡ Working (0)</button>
-    <button class="tab-btn" onclick="filterTasks('pending', this)">⏳ Pending (2)</button>
+    <button class="tab-btn" onclick="filterTasks('pending', this)">⏳ Pending (1)</button>
   </div>
 
   <!-- Roadmap Cards List -->
@@ -483,24 +483,24 @@
     </div>
 
     <!-- Card 3: Filter Data option for printing Stickers & Tracking -->
-    <div class="roadmap-card status-pending" data-status="pending">
+    <div class="roadmap-card status-done" data-status="done">
       <div class="card-icon-wrap">🏷️</div>
       <div class="card-content">
         <div class="card-top">
           <h2 class="card-title">Need Filter Data option for printing Stickers and then keep a track of printing stickers with date, time and person who had printed</h2>
-          <span class="badge-status pending">⏳ Pending</span>
+          <span class="badge-status done">✓ Done</span>
         </div>
         <div class="card-meta">
           <span class="meta-tag">Sticker Printing & Audit Trail</span>
-          <span>Scheduled Next</span>
+          <span>Completed in v1.2</span>
         </div>
         <p class="card-desc">
-          Add comprehensive multi-field filtering (Client, Category, Location, Date Range, Status) to the Sticker Printing module so users can selectively generate stickers in batch, coupled with an audit log recording timestamp and operator name whenever stickers are generated or printed.
+          Added a multi-field filter toolbar (Search, Client, Category, Location, Bin Location, Status) to the Sticker Printing module, batch file selector, automatic print logging to the <code>Print Sticker</code> Google Sheet, and an interactive Print History audit modal.
         </p>
         <ul class="card-highlights">
-          <li>Multi-filter criteria selection for selective batch sticker queue.</li>
-          <li>Print audit log recording Date, Time, and Operator Name.</li>
-          <li>Preview before printing spine and cover sticker labels.</li>
+          <li>Multi-filter criteria selection for selective batch sticker queue with instant count badge.</li>
+          <li>Audit logging in Google Sheet capturing Batch ID, Timestamp, File details, Format, and Printed By.</li>
+          <li>Searchable "📜 Print History" audit modal showing complete print logs.</li>
         </ul>
       </div>
     </div>

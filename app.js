@@ -741,11 +741,11 @@ function showStartupUpdatesCard() {
               <span style="font-size:0.82rem;opacity:0.9;">Track which features are completed, in progress, or pending.</span>
             </div>
             <span style="background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.35);padding:4px 12px;border-radius:20px;font-size:0.82rem;font-weight:700;">
-              3 of 5 Done (60%)
+              4 of 5 Done (80%)
             </span>
           </div>
           <div style="width:100%;height:8px;background:rgba(255,255,255,0.25);border-radius:8px;overflow:hidden;">
-            <div style="width:60%;height:100%;background:#34a853;border-radius:8px;"></div>
+            <div style="width:80%;height:100%;background:#34a853;border-radius:8px;"></div>
           </div>
         </div>
 
@@ -776,15 +776,15 @@ function showStartupUpdatesCard() {
             </div>
           </div>
 
-          <!-- Task 3: Pending -->
-          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#f8f9fa;border:1px solid #dadce0;border-left:5px solid #80868b;border-radius:8px;">
+          <!-- Task 3: Done -->
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#f8fafd;border:1px solid #ceead6;border-left:5px solid #188038;border-radius:8px;">
             <div style="font-size:1.25rem;line-height:1;margin-top:2px;">🏷️</div>
             <div style="flex:1;">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
                 <strong style="color:#202124;font-size:0.92rem;">Need Filter Data option for printing Stickers and then keep a track of printing stickers with date, time and person who had printed</strong>
-                <span class="badge" style="background:#f1f3f4;color:#5f6368;font-weight:700;border:1px solid #dadce0;padding:3px 10px;">⏳ Pending</span>
+                <span class="badge" style="background:#e6f4ea;color:#137333;font-weight:700;border:1px solid #ceead6;padding:3px 10px;">✅ Done</span>
               </div>
-              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Filtered batch sticker queue + audit trail tracking date, time, and operator name.</p>
+              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Sticker module me multi-field filters (Client, Category, Location, Bin, Status), batch selection, Print History modal, aur sheet me automatic date/time/user audit logging ready hai.</p>
             </div>
           </div>
 
