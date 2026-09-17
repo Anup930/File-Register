@@ -760,7 +760,7 @@ function showStartupUpdatesCard() {
                 <strong style="color:#202124;font-size:0.92rem;">need to search file by old file number also</strong>
                 <span class="badge" style="background:#e6f4ea;color:#137333;font-weight:700;border:1px solid #ceead6;padding:3px 10px;">✅ Done</span>
               </div>
-              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Toolbar Row 1 me dedicated Old File Number filter dropdown add ho gaya hai with instant sync.</p>
+              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Integrated dedicated searchable Old File Number dropdown in Toolbar Row 1 with live table synchronization.</p>
             </div>
           </div>
 
@@ -772,7 +772,7 @@ function showStartupUpdatesCard() {
                 <strong style="color:#202124;font-size:0.92rem;">Change of status , location, etc. option not showing</strong>
                 <span class="badge" style="background:#e6f4ea;color:#137333;font-weight:700;border:1px solid #ceead6;padding:3px 10px;">✅ Done</span>
               </div>
-              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Register rows aur File Details me Quick Update modal add kar diya gaya hai with detailed audit logging (kya tha ➔ kya hua aur kisne kiya).</p>
+              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Implemented Quick Update modal across Register rows & File Details with granular audit diff tracking (previous vs new value & user attribution).</p>
             </div>
           </div>
 
@@ -784,7 +784,7 @@ function showStartupUpdatesCard() {
                 <strong style="color:#202124;font-size:0.92rem;">Need Filter Data option for printing Stickers and then keep a track of printing stickers with date, time and person who had printed</strong>
                 <span class="badge" style="background:#e6f4ea;color:#137333;font-weight:700;border:1px solid #ceead6;padding:3px 10px;">✅ Done</span>
               </div>
-              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Sticker module me multi-field filters (Client, Category, Location, Bin, Status), batch selection, Print History modal, aur sheet me automatic date/time/user audit logging ready hai.</p>
+              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Added multi-field filter toolbar (Client, Category, Location, Bin, Status), batch selection, Print History modal, and automated sheet logging with date, time, and operator name.</p>
             </div>
           </div>
 
@@ -796,7 +796,7 @@ function showStartupUpdatesCard() {
                 <strong style="color:#202124;font-size:0.92rem;">Allott Bin No. to multiple files in bulk</strong>
                 <span class="badge" style="background:#f1f3f4;color:#5f6368;font-weight:700;border:1px solid #dadce0;padding:3px 10px;">⏳ Pending</span>
               </div>
-              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Register me multi-select checkboxes & bulk Bin allotment modal.</p>
+              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Multi-select checkbox workflow with bulk action modal to assign or reassign Bin Numbers across multiple files simultaneously.</p>
             </div>
           </div>
 
@@ -808,7 +808,7 @@ function showStartupUpdatesCard() {
                 <strong style="color:#202124;font-size:0.92rem;">Option to close the file - making it empty is also required</strong>
                 <span class="badge" style="background:#e6f4ea;color:#137333;font-weight:700;border:1px solid #ceead6;padding:3px 10px;">✅ Done</span>
               </div>
-              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Files ko close/empty aur archive karne ka feature system me available & logged hai.</p>
+              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Integrated file closure and archiving workflows to empty file contents and retire records while preserving complete audit history.</p>
             </div>
           </div>
 
