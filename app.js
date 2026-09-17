@@ -648,11 +648,64 @@ function exportToCSV(files, filename = 'file-register.csv') {
   URL.revokeObjectURL(a.href);
 }
 
+// ── STRING & ACTIVITY FORMATTING ─────────────────────────────
+function escapeHTML(str) {
+  if (str === null || str === undefined) return '';
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;');
+}
+
+function formatActivityDetail(details) {
+  if (!details) return '';
+  const str = String(details).trim();
+
+  // If details contain field diff indicator ' → ' or '→'
+  if (str.includes(' → ') || str.includes('→')) {
+    let notePrefix = '';
+    let diffPortion = str;
+    if (str.includes(' — ') && str.split(' — ')[1].includes('→')) {
+      const parts = str.split(' — ');
+      notePrefix = parts[0];
+      diffPortion = parts.slice(1).join(' — ');
+    }
+
+    const items = diffPortion.split(' | ');
+    const pillsHTML = items.map(item => {
+      // Regex matches: Field Name: "old" → "new" or Field Name: old → new
+      const m = item.match(/^([^:]+):\s*"?(.*?)"?\s*→\s*"?(.*?)"?$/);
+      if (m) {
+        const fieldName = m[1].trim();
+        const oldVal = m[2].trim();
+        const newVal = m[3].trim();
+        return `
+          <span class="activity-diff-pill">
+            <span class="diff-field-name">${escapeHTML(fieldName)}:</span>
+            <span class="diff-old-val">${escapeHTML(oldVal)}</span>
+            <span class="diff-arrow">➔</span>
+            <span class="diff-new-val">${escapeHTML(newVal)}</span>
+          </span>`;
+      }
+      return `<span class="activity-diff-pill">${escapeHTML(item)}</span>`;
+    }).join('');
+
+    return `
+      ${notePrefix ? `<div style="font-weight:600;color:var(--gray-800);margin-bottom:3px;">${escapeHTML(notePrefix)}</div>` : ''}
+      <div class="activity-change-grid">${pillsHTML}</div>`;
+  }
+
+  return escapeHTML(str);
+}
+
 // ── ACTIVITY DOT COLOR ─────────────────────────────────────────
 function activityDotColor(action) {
   if (action === 'Created') return 'green';
   if (action === 'Deleted') return 'red';
   if (action === 'Checked out') return 'orange';
+  if (action === 'Updated' || action === 'File Updated') return 'orange';
   return '';
 }
 
@@ -688,11 +741,11 @@ function showStartupUpdatesCard() {
               <span style="font-size:0.82rem;opacity:0.9;">Track which features are completed, in progress, or pending.</span>
             </div>
             <span style="background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.35);padding:4px 12px;border-radius:20px;font-size:0.82rem;font-weight:700;">
-              2 of 5 Done (40%)
+              3 of 5 Done (60%)
             </span>
           </div>
           <div style="width:100%;height:8px;background:rgba(255,255,255,0.25);border-radius:8px;overflow:hidden;">
-            <div style="width:40%;height:100%;background:#34a853;border-radius:8px;"></div>
+            <div style="width:60%;height:100%;background:#34a853;border-radius:8px;"></div>
           </div>
         </div>
 
@@ -711,15 +764,15 @@ function showStartupUpdatesCard() {
             </div>
           </div>
 
-          <!-- Task 2: Working -->
-          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#fffdfa;border:1px solid #feefc3;border-left:5px solid #e37400;border-radius:8px;">
+          <!-- Task 2: Done -->
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#f8fafd;border:1px solid #ceead6;border-left:5px solid #188038;border-radius:8px;">
             <div style="font-size:1.25rem;line-height:1;margin-top:2px;">⚡</div>
             <div style="flex:1;">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
                 <strong style="color:#202124;font-size:0.92rem;">Change of status , location, etc. option not showing</strong>
-                <span class="badge" style="background:#fef7e0;color:#b06000;font-weight:700;border:1px solid #feefc3;padding:3px 10px;">⚡ Working</span>
+                <span class="badge" style="background:#e6f4ea;color:#137333;font-weight:700;border:1px solid #ceead6;padding:3px 10px;">✅ Done</span>
               </div>
-              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Register rows pe fast status/location change action button active development me hai.</p>
+              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Register rows aur File Details me Quick Update modal add kar diya gaya hai with detailed audit logging (kya tha ➔ kya hua aur kisne kiya).</p>
             </div>
           </div>
 

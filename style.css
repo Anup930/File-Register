@@ -1105,8 +1105,35 @@ tbody td { padding: 10px 14px; color: var(--gray-800); vertical-align: middle; }
 .activity-dot.red    { background: var(--danger); }
 .activity-body { flex: 1; }
 .activity-action { font-weight: 600; font-size: 0.9rem; color: var(--gray-900); }
-.activity-detail { font-size: 0.82rem; color: var(--gray-600); margin-top: 2px; }
-.activity-meta   { font-size: 0.78rem; color: var(--gray-500); margin-top: 3px; }
+.activity-detail { font-size: 0.84rem; color: var(--gray-700); margin-top: 4px; line-height: 1.5; }
+.activity-change-grid { display: flex; flex-direction: column; gap: 5px; margin-top: 5px; }
+.activity-diff-pill {
+  display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap;
+  background: var(--gray-50); border: 1px solid var(--gray-200);
+  border-radius: 6px; padding: 3px 8px; font-size: 0.8rem;
+  margin: 2px 4px 2px 0;
+}
+.diff-field-name { font-weight: 600; color: var(--gray-800); }
+.diff-old-val { color: #c5221f; background: #fce8e6; padding: 1px 6px; border-radius: 4px; text-decoration: line-through; }
+.diff-arrow { color: var(--gray-500); font-weight: bold; font-size: 0.75rem; }
+.diff-new-val { color: #137333; background: #e6f4ea; padding: 1px 6px; border-radius: 4px; font-weight: 600; }
+.activity-meta { font-size: 0.78rem; color: var(--gray-500); margin-top: 5px; }
+.activity-meta strong { color: var(--gray-800); }
+
+/* Quick Status / Location interactive styles */
+.col-status-cell:hover, .col-location-cell:hover, .col-bin-cell:hover {
+  background: var(--primary-light) !important;
+}
+.quick-edit-hint {
+  font-size: 0.75rem;
+  color: var(--primary);
+  opacity: 0;
+  transition: opacity 0.15s ease;
+  margin-left: 4px;
+}
+tr:hover .quick-edit-hint {
+  opacity: 0.9;
+}
 
 /* ── File Detail ─────────────────────────────────────────────── */
 .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }

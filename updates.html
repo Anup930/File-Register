@@ -398,11 +398,11 @@
       <div class="stats-title">
         <span>⚡ Project Progress & Milestone Status</span>
       </div>
-      <div class="progress-pill">2 of 5 Tasks Completed (40%)</div>
+      <div class="progress-pill">3 of 5 Tasks Completed (60%)</div>
     </div>
 
     <div class="progress-bar-wrap">
-      <div class="progress-bar-fill"></div>
+      <div class="progress-bar-fill" style="width: 60%;"></div>
     </div>
 
     <div class="stat-counters">
@@ -411,11 +411,11 @@
         <div class="stat-name">Total Tasks</div>
       </div>
       <div class="stat-pill done">
-        <div class="stat-count">2</div>
+        <div class="stat-count">3</div>
         <div class="stat-name">Completed</div>
       </div>
       <div class="stat-pill working">
-        <div class="stat-count">1</div>
+        <div class="stat-count">0</div>
         <div class="stat-name">In Progress</div>
       </div>
       <div class="stat-pill pending">
@@ -428,8 +428,8 @@
   <!-- Filter tabs -->
   <div class="filter-tabs">
     <button class="tab-btn active" onclick="filterTasks('all', this)">All Items (5)</button>
-    <button class="tab-btn" onclick="filterTasks('done', this)">✅ Done (2)</button>
-    <button class="tab-btn" onclick="filterTasks('working', this)">⚡ Working (1)</button>
+    <button class="tab-btn" onclick="filterTasks('done', this)">✅ Done (3)</button>
+    <button class="tab-btn" onclick="filterTasks('working', this)">⚡ Working (0)</button>
     <button class="tab-btn" onclick="filterTasks('pending', this)">⏳ Pending (2)</button>
   </div>
 
@@ -460,23 +460,24 @@
     </div>
 
     <!-- Card 2: Change of status, location -->
-    <div class="roadmap-card status-working" data-status="working">
+    <div class="roadmap-card status-done" data-status="done">
       <div class="card-icon-wrap">⚡</div>
       <div class="card-content">
         <div class="card-top">
           <h2 class="card-title">Change of status , location, etc. option not showing</h2>
-          <span class="badge-status working">⚡ Working</span>
+          <span class="badge-status done">✓ Done</span>
         </div>
         <div class="card-meta">
-          <span class="meta-tag">Fast Actions & State Management</span>
-          <span>Active Development</span>
+          <span class="meta-tag">Fast Actions & Audit Diff Tracking</span>
+          <span>Completed in v1.1</span>
         </div>
         <p class="card-desc">
-          Implementing direct quick-action popover / inline edit controls on the Register table so users can update Status, Physical Location, Bin No., and Assigned Holder immediately without navigating to the full edit form.
+          Added <strong>⚡ Quick Update Modal</strong> directly in Register table actions and File Detail view to instantly update Status, Location, Bin Location, Held By, and Due Date with comprehensive diff tracking (Kya tha ➔ Kya hua aur Kisne kiya).
         </p>
         <ul class="card-highlights">
-          <li>Adding one-click quick update modal for instant status and location changes.</li>
-          <li>Ensuring smooth status changes with automatic Activity Log tracking.</li>
+          <li>One-click ⚡ Quick Update modal on register rows and file details page.</li>
+          <li>Interactive clickable table cells for Status, Location, and Bin with live hover hints.</li>
+          <li>Field-by-field audit diff logging in Google Sheets and activity timeline with color-coded pills (old value struck out, new value highlighted).</li>
         </ul>
       </div>
     </div>
