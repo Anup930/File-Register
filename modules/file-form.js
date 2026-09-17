@@ -244,7 +244,19 @@ const FileFormModule = (() => {
 
             <!-- Tab 3: Activity Log -->
             <div id="tab-activity" class="tab-content">
-              <div class="activity-list">${activityHTML}</div>
+              <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+                <div style="font-size:0.9rem;font-weight:700;color:var(--gray-900);display:flex;align-items:center;gap:6px;">
+                  <span>📜</span>
+                  <span>Activity History & Audit Trail</span>
+                  <span class="badge" style="background:var(--primary-light);color:var(--primary);font-size:0.75rem;padding:2px 8px;">${(log || []).length} logs</span>
+                </div>
+                <div style="font-size:0.75rem;color:var(--gray-600);background:var(--gray-100);padding:3px 10px;border-radius:12px;border:1px solid var(--gray-300);">
+                  ↕ Scroll inside panel
+                </div>
+              </div>
+              <div class="activity-scroll-panel">
+                <div class="activity-list">${activityHTML}</div>
+              </div>
             </div>
           </div>
         </div>

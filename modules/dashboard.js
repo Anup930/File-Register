@@ -107,8 +107,10 @@ const DashboardModule = (() => {
           <span class="card-title">🕑 Recent Activity</span>
           <a href="#register" class="btn btn-ghost btn-sm">View All Files →</a>
         </div>
-        <div class="card-body">
-          <div class="activity-list">${activity}</div>
+        <div class="card-body" style="padding:16px;">
+          <div class="activity-scroll-panel" style="max-height:400px;">
+            <div class="activity-list">${activity}</div>
+          </div>
         </div>
       </div>`;
   }

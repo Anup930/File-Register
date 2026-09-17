@@ -360,22 +360,32 @@ const RegisterModule = (() => {
       state.page  = data.page  || 1;
 
       // Dynamically update the 4 stat cards according to current filter results!
-      let s = data.stats;
-      if (!s) {
-        let totalFiles = 0, checkedOut = 0, overdue = 0;
-        const today = new Date(); today.setHours(0, 0, 0, 0);
-        state.files.forEach(f => {
-          totalFiles += (f.fileCount || 0);
-          if (f.status === 'Checked out') {
-            checkedOut++;
-            if (f.dueDate) {
-              const d = new Date(f.dueDate); d.setHours(0, 0, 0, 0);
-              if (d < today) overdue++;
-            }
+      let s = Object.assign({}, data.stats || {});
+      let pageTotalFiles = 0;
+      let pageCheckedOut = 0;
+      let pageOverdue = 0;
+      const today = new Date(); today.setHours(0, 0, 0, 0);
+
+      state.files.forEach(f => {
+        const cnt = Number(f.fileCount || f.filesCount || 0);
+        pageTotalFiles += cnt;
+        if (f.status === 'Checked out') {
+          pageCheckedOut++;
+          if (f.dueDate) {
+            const d = new Date(f.dueDate); d.setHours(0, 0, 0, 0);
+            if (d < today) pageOverdue++;
           }
-        });
-        s = { total: state.total, totalFiles, checkedOut, overdue };
+        }
+      });
+
+      if (s.total === undefined) s.total = state.total;
+      // Use client-calculated file count if server returned 0 or missing but page has files
+      if (s.totalFiles === undefined || (s.totalFiles === 0 && pageTotalFiles > 0)) {
+        s.totalFiles = pageTotalFiles;
       }
+      if (s.checkedOut === undefined) s.checkedOut = pageCheckedOut;
+      if (s.overdue === undefined) s.overdue = pageOverdue;
+
       state.stats = s;
       updateToolbarStats(s);
 
@@ -399,8 +409,8 @@ const RegisterModule = (() => {
           <td>${f.category || '—'}</td>
           <td>${f.subCategory || '—'}</td>
           <td>
-            <a href="#file/${encodeURIComponent(f.fileNumber)}" class="badge" style="background:var(--primary-light);color:var(--primary);text-decoration:none;font-size:.78rem;padding:3px 8px;cursor:pointer" title="View files inside this register">
-              📂 ${f.fileCount || 0} Files
+            <a href="#file/${encodeURIComponent(f.fileNumber)}" class="badge" style="background:${(f.fileCount || f.filesCount) ? '#fef7e0' : 'var(--primary-light)'};color:${(f.fileCount || f.filesCount) ? '#b06000' : 'var(--primary)'};border:1px solid ${(f.fileCount || f.filesCount) ? '#feefc3' : 'transparent'};text-decoration:none;font-size:.78rem;padding:3px 8px;cursor:pointer" title="View files inside this register">
+              📂 ${f.fileCount || f.filesCount || 0} Files
             </a>
           </td>
           <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${f.details}">${f.details || '—'}</td>
