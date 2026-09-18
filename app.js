@@ -39,8 +39,6 @@ function initUser() {
     App.currentUser = session;
     App.user = session.fullName || session.username;
     updateUserUI();
-    // Show smart card on page load / refresh
-    setTimeout(showStartupUpdatesCard, 600);
   }
 }
 
@@ -128,8 +126,6 @@ function showLoginScreen() {
         loadConfig();
         navigate(location.hash || '#dashboard');
         toast(`Welcome back, ${App.user}! 👋`, 'success');
-        setTimeout(showStartupUpdatesCard, 500);
-
       } catch (err) {
         if (btnSubmit) btnSubmit.disabled = false;
         if (txtSpan) txtSpan.textContent = 'Sign In →';
@@ -1126,10 +1122,12 @@ function activityDotColor(action) {
 
 // ── UPDATES & ROADMAP SMART CARD MODAL ─────────────────────────
 function initUpdatesUI() {
-  document.getElementById('topbar-updates-btn')?.addEventListener('click', (e) => {
+  const openModalHandler = (e) => {
     e.preventDefault();
     showStartupUpdatesCard();
-  });
+  };
+  document.getElementById('topbar-updates-btn')?.addEventListener('click', openModalHandler);
+  document.getElementById('nav-updates-link')?.addEventListener('click', openModalHandler);
 }
 
 function showStartupUpdatesCard() {
@@ -1153,14 +1151,14 @@ function showStartupUpdatesCard() {
           <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;flex-wrap:wrap;gap:8px;">
             <div>
               <strong style="font-size:1.02rem;display:block;">Development & Feature Status</strong>
-              <span style="font-size:0.82rem;opacity:0.9;">Track which features are completed, in progress, or pending.</span>
+              <span style="font-size:0.82rem;opacity:0.9;">All requested features and operational updates have been completed.</span>
             </div>
             <span style="background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.35);padding:4px 12px;border-radius:20px;font-size:0.82rem;font-weight:700;">
-              6 of 8 Done (75%)
+              8 of 8 Done (100%)
             </span>
           </div>
           <div style="width:100%;height:8px;background:rgba(255,255,255,0.25);border-radius:8px;overflow:hidden;">
-            <div style="width:75%;height:100%;background:#34a853;border-radius:8px;"></div>
+            <div style="width:100%;height:100%;background:#34a853;border-radius:8px;"></div>
           </div>
         </div>
 
@@ -1239,27 +1237,27 @@ function showStartupUpdatesCard() {
             </div>
           </div>
 
-          <!-- Task 7: Pending -->
-          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#f8f9fa;border:1px solid #dadce0;border-left:5px solid #80868b;border-radius:8px;">
+          <!-- Task 7: Done -->
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#f8fafd;border:1px solid #ceead6;border-left:5px solid #188038;border-radius:8px;">
             <div style="font-size:1.25rem;line-height:1;margin-top:2px;">📦</div>
             <div style="flex:1;">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
-                <strong style="color:#202124;font-size:0.92rem;">Allott Bin No. to multiple files in bulk</strong>
-                <span class="badge" style="background:#f1f3f4;color:#5f6368;font-weight:700;border:1px solid #dadce0;padding:3px 10px;">⏳ Pending</span>
+                <strong style="color:#202124;font-size:0.92rem;">Allott Bin No. & details to multiple files in bulk & Add to Print</strong>
+                <span class="badge" style="background:#e6f4ea;color:#137333;font-weight:700;border:1px solid #ceead6;padding:3px 10px;">✅ Done</span>
               </div>
-              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Multi-select checkbox workflow with bulk action modal to assign or reassign Bin Numbers across multiple files simultaneously.</p>
+              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Multi-select checkbox workflow with bulk action toolbar, bulk field update modal (Location, Category, Bin, Status, Held By), and 1-click Add to Print queue.</p>
             </div>
           </div>
 
-          <!-- Task 8: Pending -->
-          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#f8f9fa;border:1px solid #dadce0;border-left:5px solid #80868b;border-radius:8px;">
+          <!-- Task 8: Done -->
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#f8fafd;border:1px solid #ceead6;border-left:5px solid #188038;border-radius:8px;">
             <div style="font-size:1.25rem;line-height:1;margin-top:2px;">📂</div>
             <div style="flex:1;">
               <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
                 <strong style="color:#202124;font-size:0.92rem;">Option to close the file - making it empty is also required</strong>
-                <span class="badge" style="background:#f1f3f4;color:#5f6368;font-weight:700;border:1px solid #dadce0;padding:3px 10px;">⏳ Pending</span>
+                <span class="badge" style="background:#e6f4ea;color:#137333;font-weight:700;border:1px solid #ceead6;padding:3px 10px;">✅ Done</span>
               </div>
-              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Provide dedicated workflow to close active files, empty assigned register contents, and transition records to archived state while preserving complete audit history.</p>
+              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Supported Status 'Closed' with file closing workflow, emptying register contents, and updating status with full audit trail in ActivityLog.</p>
             </div>
           </div>
 

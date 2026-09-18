@@ -398,11 +398,11 @@
       <div class="stats-title">
         <span>⚡ Project Progress & Milestone Status</span>
       </div>
-      <div class="progress-pill">6 of 8 Tasks Completed (75%)</div>
+      <div class="progress-pill">8 of 8 Tasks Completed (100%)</div>
     </div>
 
     <div class="progress-bar-wrap">
-      <div class="progress-bar-fill" style="width: 75%;"></div>
+      <div class="progress-bar-fill" style="width: 100%;"></div>
     </div>
 
     <div class="stat-counters">
@@ -411,7 +411,7 @@
         <div class="stat-name">Total Tasks</div>
       </div>
       <div class="stat-pill done">
-        <div class="stat-count">6</div>
+        <div class="stat-count">8</div>
         <div class="stat-name">Completed</div>
       </div>
       <div class="stat-pill working">
@@ -419,7 +419,7 @@
         <div class="stat-name">In Progress</div>
       </div>
       <div class="stat-pill pending">
-        <div class="stat-count">2</div>
+        <div class="stat-count">0</div>
         <div class="stat-name">Pending</div>
       </div>
     </div>
@@ -428,9 +428,9 @@
   <!-- Filter tabs -->
   <div class="filter-tabs">
     <button class="tab-btn active" onclick="filterTasks('all', this)">All Items (8)</button>
-    <button class="tab-btn" onclick="filterTasks('done', this)">✅ Done (6)</button>
+    <button class="tab-btn" onclick="filterTasks('done', this)">✅ Done (8)</button>
     <button class="tab-btn" onclick="filterTasks('working', this)">⚡ Working (0)</button>
-    <button class="tab-btn" onclick="filterTasks('pending', this)">⏳ Pending (2)</button>
+    <button class="tab-btn" onclick="filterTasks('pending', this)">⏳ Pending (0)</button>
   </div>
 
   <!-- Roadmap Cards List -->
@@ -574,47 +574,47 @@
       </div>
     </div>
 
-    <!-- Card 7: Allott Bin No. to multiple files in bulk -->
-    <div class="roadmap-card status-pending" data-status="pending">
+    <!-- Card 7: Allott Bin No. & Bulk Update -->
+    <div class="roadmap-card status-done" data-status="done">
       <div class="card-icon-wrap">📦</div>
       <div class="card-content">
         <div class="card-top">
-          <h2 class="card-title">Allott Bin No. to multiple files in bulk</h2>
-          <span class="badge-status pending">⏳ Pending</span>
+          <h2 class="card-title">Allott Bin No. & bulk update files + Add to Print queue</h2>
+          <span class="badge-status done">✓ Done</span>
         </div>
         <div class="card-meta">
-          <span class="meta-tag">Bulk Operations</span>
-          <span>Queued</span>
+          <span class="meta-tag">Bulk Operations & Print Queue</span>
+          <span>Completed in v1.1</span>
         </div>
         <p class="card-desc">
-          Enable multi-row checkbox selection on the File Register table and introduce a bulk action button to assign or re-assign Bin Numbers to multiple files simultaneously in one single action.
+          Enabled multi-row checkbox selection on the File Register table with a floating Bulk Action toolbar to simultaneously update Location, Category, Sub-Category, Bin Location, Status, and Held By, as well as 1-click Add to Print Queue.
         </p>
         <ul class="card-highlights">
-          <li>Batch selection checkboxes with "Select All" support.</li>
-          <li>Bulk Bin Allotment modal with autocomplete Bin Location selector.</li>
-          <li>Instant batch update via Apps Script backend.</li>
+          <li>Batch selection checkboxes with "Select All" and live row highlighting.</li>
+          <li>Bulk Update modal with selective checkboxes (only checked fields are altered, untouched fields remain safe).</li>
+          <li>Instant batch update & queue synchronization via Apps Script backend with audit trail.</li>
         </ul>
       </div>
     </div>
 
     <!-- Card 8: Option to close the file - making it empty is also required -->
-    <div class="roadmap-card status-pending" data-status="pending">
+    <div class="roadmap-card status-done" data-status="done">
       <div class="card-icon-wrap">📂</div>
       <div class="card-content">
         <div class="card-top">
           <h2 class="card-title">Option to close the file - making it empty is also required</h2>
-          <span class="badge-status pending">⏳ Pending</span>
+          <span class="badge-status done">✓ Done</span>
         </div>
         <div class="card-meta">
           <span class="meta-tag">Lifecycle & Archival</span>
-          <span>Queued</span>
+          <span>Completed in v1.1</span>
         </div>
         <p class="card-desc">
-          Provide dedicated workflow to close active files, empty assigned register contents, and transition records to archived state while retaining complete audit logs.
+          Provided dedicated workflow to close active files, empty assigned register contents, and transition records to 'Closed' / 'Archived' state while retaining complete audit logs.
         </p>
         <ul class="card-highlights">
-          <li>Dedicated file closure and content emptying mechanism.</li>
-          <li>Audit logging with closure timestamps and operator attribution.</li>
+          <li>Supported 'Closed' status across quick update, register detail, and bulk workflows.</li>
+          <li>Audit logging with closure timestamps and operator attribution in ActivityLog.</li>
           <li>Clear visual indicator distinguishing active registers from closed/emptied files.</li>
         </ul>
       </div>
