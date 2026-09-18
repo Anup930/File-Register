@@ -73,18 +73,6 @@ function showLoginScreen() {
     };
   }
 
-  // Quick Demo User Chips
-  modal.querySelectorAll('.chip-quick-user').forEach(chip => {
-    chip.onclick = (e) => {
-      e.preventDefault();
-      const u = chip.dataset.user;
-      if (uInput) uInput.value = u;
-      if (pInput) pInput.value = 'Test';
-      if (alertEl) alertEl.style.display = 'none';
-      if (pInput) pInput.focus();
-    };
-  });
-
   // Submit
   if (form) {
     form.onsubmit = async (e) => {
@@ -459,15 +447,31 @@ function closeModal() {
   document.getElementById('modal-overlay')?.remove();
 }
 
-function confirmDialog(message, onConfirm, dangerLabel = 'Delete') {
+function openConfirmModal(title, message, onConfirm, okLabel = 'Confirm', isDanger = true) {
   const overlay = openModal({
-    title: 'Confirm Action',
-    body: `<div class="confirm-icon">⚠️</div><p class="confirm-msg">${message}</p>`,
-    footer: `<button class="btn btn-secondary" id="confirm-cancel">Cancel</button><button class="btn btn-danger" id="confirm-ok">${dangerLabel}</button>`
+    title: title || 'Confirm Action',
+    body: `<div class="confirm-icon">${isDanger ? '⚠️' : 'ℹ️'}</div><p class="confirm-msg" style="text-align:center;margin-top:8px;">${message}</p>`,
+    footer: `
+      <button class="btn btn-secondary" id="confirm-cancel">Cancel</button>
+      <button class="btn ${isDanger ? 'btn-danger' : 'btn-primary'}" id="confirm-ok">${okLabel}</button>
+    `
   });
   overlay.querySelector('#confirm-cancel').addEventListener('click', closeModal);
-  overlay.querySelector('#confirm-ok').addEventListener('click', () => { closeModal(); onConfirm(); });
+  overlay.querySelector('#confirm-ok').addEventListener('click', () => {
+    closeModal();
+    if (typeof onConfirm === 'function') onConfirm();
+  });
+  return overlay;
 }
+
+function confirmDialog(message, onConfirm, dangerLabel = 'Delete') {
+  return openConfirmModal('Confirm Action', message, onConfirm, dangerLabel, true);
+}
+
+window.openConfirmModal = openConfirmModal;
+window.confirmDialog = confirmDialog;
+App.openConfirmModal = openConfirmModal;
+App.confirmDialog = confirmDialog;
 
 // ── CUSTOM PROMPT DIALOG ──────────────────────────────────────
 // Replaces the ugly browser prompt() with a proper styled modal card
