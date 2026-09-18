@@ -11,14 +11,65 @@
 </head>
 <body>
 
-<!-- ── Name Prompt ──────────────────────────────────────────── -->
-<div id="name-prompt" style="display:none">
-  <div class="name-prompt-box">
-    <div class="logo">📂</div>
-    <h2>Welcome to File Register</h2>
-    <p>Please enter your name. This will be used to attribute your actions in the activity log.</p>
-    <input type="text" id="name-input" placeholder="e.g. Anup Singh" maxlength="60" autocomplete="name">
-    <button class="btn btn-primary" id="name-submit-btn">Continue →</button>
+<!-- ── Login Screen ──────────────────────────────────────────── -->
+<div id="login-modal" class="login-overlay" style="display:none">
+  <div class="login-card">
+    <div class="login-header">
+      <div class="login-brand-icon">📂</div>
+      <div class="login-brand-badge">Gretex Group</div>
+      <h2 class="login-title">Physical File Register</h2>
+      <p class="login-subtitle">Sign in to access files, stickers, and audit registers</p>
+    </div>
+
+    <form id="login-form" novalidate autocomplete="on">
+      <div id="login-error-alert" class="login-alert" style="display:none;"></div>
+
+      <div class="form-group" style="margin-bottom: 16px; text-align: left;">
+        <label class="form-label" for="login-username" style="font-size:0.82rem; font-weight:600; color:var(--gray-800); margin-bottom:6px; display:block;">
+          Username or Email <span style="color:var(--danger)">*</span>
+        </label>
+        <div class="input-icon-wrap" style="position:relative;">
+          <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:1.1rem; color:var(--gray-500);">👤</span>
+          <input type="text" id="login-username" class="form-control login-input" placeholder="e.g. admin or anup.singh" required autocomplete="username" style="padding-left:38px;">
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom: 20px; text-align: left;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <label class="form-label" for="login-password" style="font-size:0.82rem; font-weight:600; color:var(--gray-800); margin-bottom:0;">
+            Password <span style="color:var(--danger)">*</span>
+          </label>
+          <span style="font-size:0.75rem; color:var(--primary); font-weight:500;">Default: <strong>Test</strong></span>
+        </div>
+        <div class="input-icon-wrap" style="position:relative;">
+          <span style="position:absolute; left:12px; top:50%; transform:translateY(-50%); font-size:1.1rem; color:var(--gray-500);">🔒</span>
+          <input type="password" id="login-password" class="form-control login-input" placeholder="Enter password" required autocomplete="current-password" style="padding-left:38px; padding-right:40px;">
+          <button type="button" id="btn-toggle-pwd" class="btn-pwd-eye" title="Toggle password visibility" style="position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--gray-500); cursor:pointer; padding:6px; font-size:1.1rem;">👁️</button>
+        </div>
+      </div>
+
+      <button type="submit" class="btn btn-primary btn-login-submit" id="login-submit-btn">
+        <span class="btn-login-text">Sign In →</span>
+        <span class="btn-login-spinner spinner" style="display:none; width:16px; height:16px; border-width:2px; margin-left:8px;"></span>
+      </button>
+
+      <div class="login-quick-demo">
+        <div style="font-size:0.72rem; color:var(--gray-500); margin-bottom:8px; text-transform:uppercase; letter-spacing:0.05em; font-weight:600;">
+          Quick Logins (Password: Test)
+        </div>
+        <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap;">
+          <button type="button" class="chip-quick-user" data-user="admin" title="Log in as System Administrator">
+            👑 Admin
+          </button>
+          <button type="button" class="chip-quick-user" data-user="anup.singh" title="Log in as Anup Singh">
+            👤 Anup Singh
+          </button>
+          <button type="button" class="chip-quick-user" data-user="gretex.staff" title="Log in as Gretex Staff">
+            💼 Staff
+          </button>
+        </div>
+      </div>
+    </form>
   </div>
 </div>
 
@@ -80,6 +131,9 @@
           <a href="#settings/lists" class="nav-link sub-nav-link" data-page="settings/lists">
             <span class="nav-icon">📋</span> Lists
           </a>
+          <a href="#settings/users" class="nav-link sub-nav-link" data-page="settings/users" id="nav-link-users">
+            <span class="nav-icon">👤</span> Users & Access
+          </a>
         </div>
       </div>
     </div>
@@ -88,9 +142,14 @@
       <div class="sidebar-user">
         <div class="user-avatar" id="user-avatar">?</div>
         <div class="user-info">
-          <strong id="user-name-display">—</strong>
-          <br>
-          <button class="btn-change-user" id="btn-change-user">Change name</button>
+          <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            <strong id="user-name-display">—</strong>
+            <span class="badge" id="user-role-badge" style="font-size:0.65rem;padding:1px 6px;background:var(--primary-light);color:var(--primary);font-weight:700;">Staff</span>
+          </div>
+          <div style="display:flex;gap:10px;margin-top:4px;">
+            <button class="btn-sidebar-user-action" id="btn-change-pwd" title="Change your password">🔑 Password</button>
+            <button class="btn-sidebar-user-action btn-logout" id="btn-logout" title="Sign out from this session">🚪 Sign Out</button>
+          </div>
         </div>
       </div>
     </div>
@@ -102,7 +161,7 @@
       <button id="sidebar-toggle" class="btn btn-ghost btn-icon" style="display:none">☰</button>
       <span class="topbar-title" id="topbar-title">Dashboard</span>
       <button id="topbar-updates-btn" class="btn btn-sm btn-ghost" style="color:#1a73e8;background:#e8f0fe;border-radius:20px;padding:4px 12px;font-size:0.78rem;font-weight:600;display:flex;align-items:center;gap:6px;border:1px solid #c2e7ff;cursor:pointer;" title="View Feature Roadmap & Updates">
-        <span>🚀</span> Updates (4/6 Done)
+        <span>🚀</span> Updates (6/8 Done)
       </button>
       <div class="topbar-actions" id="topbar-actions"></div>
     </header>

@@ -25,59 +25,271 @@ document.addEventListener('DOMContentLoaded', () => {
   initUpdatesUI();
 });
 
-// ── USER (localStorage) ───────────────────────────────────────
+// ── USER AUTH & SESSION (localStorage) ─────────────────────────
 function initUser() {
-  const saved = localStorage.getItem('fr_user_name');
-  if (!saved) {
-    showNamePrompt();
+  const sessionStr = localStorage.getItem('fr_user_session');
+  let session = null;
+  if (sessionStr) {
+    try { session = JSON.parse(sessionStr); } catch(e) {}
+  }
+
+  if (!session || !session.username) {
+    showLoginScreen();
   } else {
-    App.user = saved;
+    App.currentUser = session;
+    App.user = session.fullName || session.username;
     updateUserUI();
     // Show smart card on page load / refresh
     setTimeout(showStartupUpdatesCard, 600);
   }
 }
 
-function showNamePrompt() {
-  const prompt = document.getElementById('name-prompt');
-  prompt.style.display = 'flex';
-  const input = document.getElementById('name-input');
-  const btn   = document.getElementById('name-submit-btn');
-  input.focus();
+function showLoginScreen() {
+  const modal = document.getElementById('login-modal');
+  if (!modal) return;
+  modal.style.display = 'flex';
 
-  const submit = () => {
-    const name = input.value.trim();
-    if (!name) { input.classList.add('is-invalid'); return; }
-    App.user = name;
-    localStorage.setItem('fr_user_name', name);
-    prompt.style.display = 'none';
-    updateUserUI();
-    loadConfig();
-    navigate(location.hash || '#dashboard');
-    // Show smart card on login
-    setTimeout(showStartupUpdatesCard, 400);
-  };
+  const form      = document.getElementById('login-form');
+  const uInput    = document.getElementById('login-username');
+  const pInput    = document.getElementById('login-password');
+  const btnSubmit = document.getElementById('login-submit-btn');
+  const alertEl   = document.getElementById('login-error-alert');
+  const eyeBtn    = document.getElementById('btn-toggle-pwd');
+  const txtSpan   = btnSubmit?.querySelector('.btn-login-text');
+  const spinSpan  = btnSubmit?.querySelector('.btn-login-spinner');
 
-  btn.addEventListener('click', submit);
-  input.addEventListener('keydown', e => { if (e.key === 'Enter') submit(); });
+  if (alertEl) { alertEl.style.display = 'none'; alertEl.textContent = ''; }
+  if (uInput) {
+    setTimeout(() => uInput.focus(), 100);
+  }
 
-  document.getElementById('btn-change-user').addEventListener('click', () => {
-    localStorage.removeItem('fr_user_name');
-    App.user = null;
-    showNamePrompt();
-    input.value = '';
+  // Eye toggle
+  if (eyeBtn && pInput) {
+    eyeBtn.onclick = (e) => {
+      e.preventDefault();
+      const isPwd = pInput.type === 'password';
+      pInput.type = isPwd ? 'text' : 'password';
+      eyeBtn.textContent = isPwd ? '🙈' : '👁️';
+    };
+  }
+
+  // Quick Demo User Chips
+  modal.querySelectorAll('.chip-quick-user').forEach(chip => {
+    chip.onclick = (e) => {
+      e.preventDefault();
+      const u = chip.dataset.user;
+      if (uInput) uInput.value = u;
+      if (pInput) pInput.value = 'Test';
+      if (alertEl) alertEl.style.display = 'none';
+      if (pInput) pInput.focus();
+    };
+  });
+
+  // Submit
+  if (form) {
+    form.onsubmit = async (e) => {
+      e.preventDefault();
+      const username = (uInput?.value || '').trim();
+      const password = (pInput?.value || '').trim();
+
+      if (!username) {
+        showLoginError('Please enter your username or email.');
+        uInput?.focus();
+        return;
+      }
+      if (!password) {
+        showLoginError('Please enter your password (Default: Test).');
+        pInput?.focus();
+        return;
+      }
+
+      // Set loading state
+      if (btnSubmit) btnSubmit.disabled = true;
+      if (txtSpan) txtSpan.textContent = 'Signing in…';
+      if (spinSpan) spinSpan.style.display = 'inline-block';
+      if (alertEl) alertEl.style.display = 'none';
+
+      try {
+        let result;
+        if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') {
+          // Demo fallback
+          result = {
+            userId: 'USR-DEMO',
+            username: username,
+            fullName: username.charAt(0).toUpperCase() + username.slice(1).replace('.', ' '),
+            role: username.toLowerCase() === 'admin' ? 'Admin' : 'Staff',
+            status: 'Active',
+            email: `${username}@gretexgroup.com`
+          };
+        } else {
+          result = await api('login', { username, password }, { username, password });
+        }
+
+        // Success
+        App.currentUser = result;
+        App.user = result.fullName || result.username;
+        localStorage.setItem('fr_user_session', JSON.stringify(result));
+        localStorage.setItem('fr_user_name', App.user);
+
+        modal.style.display = 'none';
+        if (btnSubmit) btnSubmit.disabled = false;
+        if (txtSpan) txtSpan.textContent = 'Sign In →';
+        if (spinSpan) spinSpan.style.display = 'none';
+
+        updateUserUI();
+        loadConfig();
+        navigate(location.hash || '#dashboard');
+        toast(`Welcome back, ${App.user}! 👋`, 'success');
+        setTimeout(showStartupUpdatesCard, 500);
+
+      } catch (err) {
+        if (btnSubmit) btnSubmit.disabled = false;
+        if (txtSpan) txtSpan.textContent = 'Sign In →';
+        if (spinSpan) spinSpan.style.display = 'none';
+        showLoginError(err.message || 'Login failed. Please verify credentials.');
+      }
+    };
+  }
+
+  function showLoginError(msg) {
+    if (alertEl) {
+      alertEl.textContent = msg;
+      alertEl.style.display = 'block';
+    } else {
+      toast(msg, 'error');
+    }
+  }
+}
+
+function logout() {
+  openConfirmModal(
+    'Sign Out',
+    'Are you sure you want to sign out from File Register?',
+    () => {
+      localStorage.removeItem('fr_user_session');
+      localStorage.removeItem('fr_user_name');
+      App.user = null;
+      App.currentUser = null;
+      toast('Signed out successfully.', 'info');
+      showLoginScreen();
+    },
+    'Sign Out'
+  );
+}
+
+function openChangePasswordModal() {
+  const u = App.currentUser || { username: 'admin', fullName: App.user || 'User' };
+
+  const overlay = openModal({
+    title: '🔑 Change Password',
+    body: `
+      <form id="form-change-pwd" novalidate style="display:flex;flex-direction:column;gap:14px;padding:4px 0;">
+        <div class="form-group">
+          <label class="form-label" style="font-size:0.8rem">Username</label>
+          <input type="text" class="form-control" value="${u.username} (${u.fullName})" disabled style="background:var(--gray-100);font-weight:600;">
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size:0.8rem">Current Password <span class="required" style="color:var(--danger)">*</span></label>
+          <input type="password" class="form-control" id="cp-old" placeholder="Enter current password (default: Test)" required>
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size:0.8rem">New Password <span class="required" style="color:var(--danger)">*</span></label>
+          <input type="password" class="form-control" id="cp-new" placeholder="Enter new password (min 4 characters)" required minlength="4">
+        </div>
+        <div class="form-group">
+          <label class="form-label" style="font-size:0.8rem">Confirm New Password <span class="required" style="color:var(--danger)">*</span></label>
+          <input type="password" class="form-control" id="cp-confirm" placeholder="Re-enter new password" required>
+        </div>
+        <div id="cp-error" class="login-alert" style="display:none;margin-bottom:0;font-size:0.82rem;"></div>
+      </form>
+    `,
+    footer: `
+      <div style="display:flex;justify-content:flex-end;gap:8px;width:100%;">
+        <button class="btn btn-secondary" id="btn-cancel-cp">Cancel</button>
+        <button class="btn btn-primary" id="btn-submit-cp">Update Password</button>
+      </div>
+    `
+  });
+
+  const errEl = overlay.querySelector('#cp-error');
+  const submitBtn = overlay.querySelector('#btn-submit-cp');
+  const cancelBtn = overlay.querySelector('#btn-cancel-cp');
+
+  cancelBtn?.addEventListener('click', closeModal);
+
+  submitBtn?.addEventListener('click', async () => {
+    const oldPass = overlay.querySelector('#cp-old')?.value.trim();
+    const newPass = overlay.querySelector('#cp-new')?.value.trim();
+    const confirm = overlay.querySelector('#cp-confirm')?.value.trim();
+
+    if (!oldPass || !newPass || !confirm) {
+      errEl.textContent = 'All fields are required.';
+      errEl.style.display = 'block';
+      return;
+    }
+    if (newPass !== confirm) {
+      errEl.textContent = 'New passwords do not match.';
+      errEl.style.display = 'block';
+      return;
+    }
+    if (newPass.length < 4) {
+      errEl.textContent = 'Password must be at least 4 characters.';
+      errEl.style.display = 'block';
+      return;
+    }
+
+    submitBtn.disabled = true;
+    submitBtn.textContent = 'Updating…';
+    errEl.style.display = 'none';
+
+    try {
+      await api('changePassword', {
+        username: u.username,
+        oldPassword: oldPass,
+        newPassword: newPass
+      });
+      closeModal();
+      toast('Password changed successfully!', 'success');
+    } catch(err) {
+      submitBtn.disabled = false;
+      submitBtn.textContent = 'Update Password';
+      errEl.textContent = err.message || 'Failed to update password.';
+      errEl.style.display = 'block';
+    }
   });
 }
 
 function updateUserUI() {
-  const name = App.user || '?';
-  document.getElementById('user-name-display').textContent = name;
-  document.getElementById('user-avatar').textContent = name[0].toUpperCase();
-  document.getElementById('btn-change-user').addEventListener('click', () => {
-    localStorage.removeItem('fr_user_name');
-    App.user = null;
-    showNamePrompt();
-  });
+  const u = App.currentUser || {};
+  const name = App.user || u.fullName || u.username || 'User';
+  const role = u.role || 'Staff';
+
+  const nameEl = document.getElementById('user-name-display');
+  const avatarEl = document.getElementById('user-avatar');
+  const roleEl = document.getElementById('user-role-badge');
+  const changePwdBtn = document.getElementById('btn-change-pwd');
+  const logoutBtn = document.getElementById('btn-logout');
+
+  if (nameEl) nameEl.textContent = name;
+  if (avatarEl) avatarEl.textContent = (name[0] || 'U').toUpperCase();
+  if (roleEl) {
+    roleEl.textContent = role;
+    roleEl.style.background = role === 'Admin' ? '#fef7e0' : 'var(--primary-light)';
+    roleEl.style.color = role === 'Admin' ? '#b06000' : 'var(--primary)';
+  }
+
+  // Bind change password and logout
+  const newChangeBtn = changePwdBtn?.cloneNode(true);
+  if (changePwdBtn && newChangeBtn) {
+    changePwdBtn.parentNode.replaceChild(newChangeBtn, changePwdBtn);
+    newChangeBtn.addEventListener('click', openChangePasswordModal);
+  }
+
+  const newLogoutBtn = logoutBtn?.cloneNode(true);
+  if (logoutBtn && newLogoutBtn) {
+    logoutBtn.parentNode.replaceChild(newLogoutBtn, logoutBtn);
+    newLogoutBtn.addEventListener('click', logout);
+  }
 }
 
 // ── ROUTER ────────────────────────────────────────────────────
@@ -87,7 +299,10 @@ function initRouter() {
 }
 
 function navigate(hash) {
-  if (!App.user) return; // wait for name
+  if (!App.user) {
+    showLoginScreen();
+    return;
+  }
   const page = (hash || '#dashboard').replace('#', '') || 'dashboard';
   App.currentPage = page;
   setActiveNav(page);
@@ -103,6 +318,7 @@ function navigate(hash) {
     'settings/categories':    'Settings — Categories',
     'settings/subcategories': 'Settings — Sub-Categories',
     'settings/lists':         'Settings — Drop-down Lists',
+    'settings/users':         'Settings — Users & Access',
   };
 
   const topbarTitle = document.getElementById('topbar-title');
@@ -368,6 +584,201 @@ function escapeHTML(str) {
     .replace(/"/g, '&quot;')
     .replace(/'/g, '&#039;');
 }
+
+// ── REUSABLE SEARCHABLE FILTER COMPONENT ────────────────────────
+App.renderFilterPill = function(label, id, options, currentValue, defaultLabel = 'All') {
+  const curOpt = options.find(o => String(o.value) === String(currentValue)) || options[0] || { value: '', text: defaultLabel };
+  const displayText = curOpt ? curOpt.text : defaultLabel;
+  const isActive = !!currentValue;
+
+  return `
+    <div class="filter-dropdown-wrap" id="wrap-${id}">
+      <button type="button" class="filter-pill ${isActive ? 'filter-active' : ''}" id="pill-${id}" aria-haspopup="listbox" title="Filter by ${label}">
+        <span class="filter-pill-label">${label}</span>
+        <span class="filter-pill-current" id="lbl-${id}">${escapeHTML(displayText)}</span>
+        <span class="filter-pill-caret">▾</span>
+      </button>
+      <select class="filter-select-hidden" id="${id}" style="display:none;">
+        ${options.map(o => `<option value="${escapeHTML(o.value)}" ${String(o.value) === String(currentValue) ? 'selected' : ''}>${escapeHTML(o.text)}</option>`).join('')}
+      </select>
+      <div class="filter-popover" id="popover-${id}" style="display:none;">
+        <div class="filter-popover-search">
+          <span class="search-icon">🔍</span>
+          <input type="text" class="filter-popover-input" id="search-${id}" placeholder="Type to search ${label.toLowerCase()}…" autocomplete="off">
+          <button type="button" class="filter-popover-clear" id="clear-${id}" style="display:none;" title="Clear search">✕</button>
+        </div>
+        <div class="filter-popover-list" id="list-${id}"></div>
+      </div>
+    </div>`;
+};
+
+App.bindFilterPill = function(id, options, onSelect) {
+  const wrap      = document.getElementById(`wrap-${id}`);
+  const pill      = document.getElementById(`pill-${id}`);
+  const popover   = document.getElementById(`popover-${id}`);
+  const searchInp = document.getElementById(`search-${id}`);
+  const clearBtn  = document.getElementById(`clear-${id}`);
+  const listEl    = document.getElementById(`list-${id}`);
+  const lblEl     = document.getElementById(`lbl-${id}`);
+  const hiddenSel = document.getElementById(id);
+
+  if (!pill || !popover || !listEl) return;
+
+  function renderList(query = '') {
+    const q = query.trim().toLowerCase();
+    const curVal = hiddenSel ? hiddenSel.value : '';
+
+    const filtered = options.filter(opt => {
+      if (!q) return true;
+      return String(opt.text).toLowerCase().includes(q) || String(opt.value).toLowerCase().includes(q);
+    });
+
+    if (filtered.length === 0) {
+      listEl.innerHTML = `<div class="filter-popover-empty">No matching options found</div>`;
+      return;
+    }
+
+    listEl.innerHTML = filtered.map(opt => {
+      const isSelected = String(opt.value) === String(curVal);
+      const text = opt.text;
+      let displayHtml = escapeHTML(text);
+      if (q && q.length > 0) {
+        const idx = text.toLowerCase().indexOf(q);
+        if (idx !== -1) {
+          const b = text.substring(0, idx);
+          const m = text.substring(idx, idx + q.length);
+          const a = text.substring(idx + q.length);
+          displayHtml = `${escapeHTML(b)}<mark style="background:var(--warning-bg);color:var(--gray-900);padding:0 2px;border-radius:2px;font-weight:700">${escapeHTML(m)}</mark>${escapeHTML(a)}`;
+        }
+      }
+      return `
+        <div class="filter-popover-item ${isSelected ? 'selected' : ''}" data-val="${escapeHTML(opt.value)}" data-text="${escapeHTML(opt.text)}">
+          <span>${displayHtml}</span>
+          ${isSelected ? '<span class="item-check">✓</span>' : ''}
+        </div>`;
+    }).join('');
+
+    listEl.querySelectorAll('.filter-popover-item').forEach(item => {
+      item.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const val = item.dataset.val;
+        const txt = item.dataset.text;
+
+        if (lblEl) lblEl.textContent = txt;
+        pill.classList.toggle('filter-active', !!val);
+        closePopover();
+
+        if (hiddenSel) {
+          hiddenSel.value = val;
+          hiddenSel.dispatchEvent(new Event('change'));
+        } else if (typeof onSelect === 'function') {
+          onSelect(val, txt);
+        }
+      });
+    });
+  }
+
+  function openPopover() {
+    // Close any other open filter popovers first
+    document.querySelectorAll('.filter-popover').forEach(p => {
+      if (p !== popover) {
+        p.style.display = 'none';
+        p.closest('.filter-dropdown-wrap')?.classList.remove('is-open');
+      }
+    });
+
+    // Close Old File popover if open
+    const oldFilePopover = document.getElementById('reg-old-file-popover');
+    if (oldFilePopover) oldFilePopover.style.display = 'none';
+
+    popover.style.display = 'flex';
+    wrap?.classList.add('is-open');
+    popover.style.left = '0';
+    popover.style.right = 'auto';
+
+    // Position detection to prevent screen overflow
+    const rect = popover.getBoundingClientRect();
+    if (rect.right > window.innerWidth - 10) {
+      popover.style.left = 'auto';
+      popover.style.right = '0';
+    }
+
+    if (searchInp) {
+      searchInp.value = '';
+      if (clearBtn) clearBtn.style.display = 'none';
+      renderList('');
+      setTimeout(() => searchInp.focus(), 30);
+    } else {
+      renderList('');
+    }
+  }
+
+  function closePopover() {
+    popover.style.display = 'none';
+    wrap?.classList.remove('is-open');
+  }
+
+  pill.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (popover.style.display === 'none' || !popover.style.display) {
+      openPopover();
+    } else {
+      closePopover();
+    }
+  });
+
+  if (searchInp) {
+    searchInp.addEventListener('input', (e) => {
+      const q = e.target.value;
+      if (clearBtn) clearBtn.style.display = q ? 'inline-block' : 'none';
+      renderList(q);
+    });
+    searchInp.addEventListener('click', e => e.stopPropagation());
+    searchInp.addEventListener('keydown', e => {
+      if (e.key === 'Escape') closePopover();
+    });
+  }
+
+  if (clearBtn) {
+    clearBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      searchInp.value = '';
+      clearBtn.style.display = 'none';
+      renderList('');
+      searchInp.focus();
+    });
+  }
+
+  // Listen to external changes on hidden select (e.g. from stat cards or reset)
+  if (hiddenSel) {
+    hiddenSel.addEventListener('change', () => {
+      const opt = options.find(o => String(o.value) === String(hiddenSel.value));
+      if (opt && lblEl) lblEl.textContent = opt.text;
+      pill.classList.toggle('filter-active', !!hiddenSel.value);
+    });
+  }
+
+  // Global click & esc listener
+  if (!window._filterPillGlobalBound) {
+    window._filterPillGlobalBound = true;
+    document.addEventListener('click', (e) => {
+      if (!e.target.closest('.filter-dropdown-wrap')) {
+        document.querySelectorAll('.filter-popover').forEach(p => {
+          p.style.display = 'none';
+          p.closest('.filter-dropdown-wrap')?.classList.remove('is-open');
+        });
+      }
+    });
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        document.querySelectorAll('.filter-popover').forEach(p => {
+          p.style.display = 'none';
+          p.closest('.filter-dropdown-wrap')?.classList.remove('is-open');
+        });
+      }
+    });
+  }
+};
 
 // ── SMART SELECT WITH ADD & SEARCH ─────────────────────────────
 // Renders a custom searchable select with sticky search filter at top + add button
@@ -741,11 +1152,11 @@ function showStartupUpdatesCard() {
               <span style="font-size:0.82rem;opacity:0.9;">Track which features are completed, in progress, or pending.</span>
             </div>
             <span style="background:rgba(255,255,255,0.22);border:1px solid rgba(255,255,255,0.35);padding:4px 12px;border-radius:20px;font-size:0.82rem;font-weight:700;">
-              4 of 6 Done (67%)
+              6 of 8 Done (75%)
             </span>
           </div>
           <div style="width:100%;height:8px;background:rgba(255,255,255,0.25);border-radius:8px;overflow:hidden;">
-            <div style="width:67%;height:100%;background:#34a853;border-radius:8px;"></div>
+            <div style="width:75%;height:100%;background:#34a853;border-radius:8px;"></div>
           </div>
         </div>
 
@@ -788,7 +1199,7 @@ function showStartupUpdatesCard() {
             </div>
           </div>
 
-          <!-- Task 4: Done (New) -->
+          <!-- Task 4: Done -->
           <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#f8fafd;border:1px solid #ceead6;border-left:5px solid #188038;border-radius:8px;">
             <div style="font-size:1.25rem;line-height:1;margin-top:2px;">🗂️</div>
             <div style="flex:1;">
@@ -800,7 +1211,31 @@ function showStartupUpdatesCard() {
             </div>
           </div>
 
-          <!-- Task 5: Pending -->
+          <!-- Task 5: Done (Login Module) -->
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#f8fafd;border:1px solid #ceead6;border-left:5px solid #188038;border-radius:8px;">
+            <div style="font-size:1.25rem;line-height:1;margin-top:2px;">🔐</div>
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                <strong style="color:#202124;font-size:0.92rem;">Role-based User Authentication & Access Control (Login System)</strong>
+                <span class="badge" style="background:#e6f4ea;color:#137333;font-weight:700;border:1px solid #ceead6;padding:3px 10px;">✅ Done</span>
+              </div>
+              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Secure login modal, Users sheet setup in Google Sheets, default password Test, session persistence, and user administration menu.</p>
+            </div>
+          </div>
+
+          <!-- Task 6: Done (Searchable Dropdowns) -->
+          <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#f8fafd;border:1px solid #ceead6;border-left:5px solid #188038;border-radius:8px;">
+            <div style="font-size:1.25rem;line-height:1;margin-top:2px;">🔍</div>
+            <div style="flex:1;">
+              <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;">
+                <strong style="color:#202124;font-size:0.92rem;">Searchable filter dropdowns with top search bar (like Old File)</strong>
+                <span class="badge" style="background:#e6f4ea;color:#137333;font-weight:700;border:1px solid #ceead6;padding:3px 10px;">✅ Done</span>
+              </div>
+              <p style="font-size:0.8rem;color:#5f6368;margin-top:4px;margin-bottom:0;">Equipped Category, Sub-Cat, Files, Location, Bin, Status, and Held By with top search bar, live keyword highlight, and checkmarks.</p>
+            </div>
+          </div>
+
+          <!-- Task 7: Pending -->
           <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#f8f9fa;border:1px solid #dadce0;border-left:5px solid #80868b;border-radius:8px;">
             <div style="font-size:1.25rem;line-height:1;margin-top:2px;">📦</div>
             <div style="flex:1;">
@@ -812,7 +1247,7 @@ function showStartupUpdatesCard() {
             </div>
           </div>
 
-          <!-- Task 6: Pending -->
+          <!-- Task 8: Pending -->
           <div style="display:flex;align-items:flex-start;gap:12px;padding:12px 14px;background:#f8f9fa;border:1px solid #dadce0;border-left:5px solid #80868b;border-radius:8px;">
             <div style="font-size:1.25rem;line-height:1;margin-top:2px;">📂</div>
             <div style="flex:1;">
