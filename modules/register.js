@@ -6,6 +6,7 @@ const RegisterModule = (() => {
     oldFileNumber: '',
     files: [], allFiles: [], // allFiles used for CSV export
     stats: null, // cached dashboard stats
+    selectedFiles: new Set(),
   };
   let debounceTimer;
 
@@ -126,7 +127,7 @@ const RegisterModule = (() => {
             { value: '', text: 'Any' },
             { value: 'has_files', text: '📂 Has Files' },
             { value: 'no_files', text: '📭 Empty' }
-          ], state.filesCount)}
+          ], state.filesCount, 'Any')}
           ${filterPill('Location', 'reg-location', [{ value: '', text: 'All' }, ...locations.map(l => ({ value: l, text: l }))], state.location)}
           ${filterPill('Bin', 'reg-bin', [{ value: '', text: 'All' }, ...bins.map(b => ({ value: b, text: b }))], state.binLocation)}
           ${filterPill('Status', 'reg-status', [
@@ -136,15 +137,24 @@ const RegisterModule = (() => {
             { value: 'Archived', text: '📦 Archived' },
             { value: 'Missing', text: '🔴 Missing' }
           ], state.status)}
-          ${filterPill('Held By', 'reg-heldby', [{ value: '', text: 'Anyone' }, ...hods.map(h => ({ value: h, text: h }))], state.heldBy)}
+          ${filterPill('Held By', 'reg-heldby', [{ value: '', text: 'Anyone' }, ...hods.map(h => ({ value: h, text: h }))], state.heldBy, 'Anyone')}
         </div>
       </div>
       <div id="reg-table-wrap">
         <div class="page-loading"><div class="spinner"></div></div>
+      </div>
+      <div class="bulk-actions-toolbar" id="reg-bulk-toolbar">
+        <span class="bulk-toolbar-count" id="reg-bulk-count">0 files selected</span>
+        <button type="button" class="btn-bulk-action btn-bulk-update" id="btn-bulk-update-action" title="Change Location, Category, Bin, Status, Held By for selected files">⚡ Bulk Update</button>
+        <button type="button" class="btn-bulk-action btn-bulk-print" id="btn-bulk-print-action" title="Mark selected files for sticker printing">🏷️ Add to Print</button>
+        <button type="button" class="btn-bulk-action btn-bulk-clear" id="btn-bulk-clear-action" title="Clear current selection">✕ Deselect</button>
       </div>`;
   }
 
-  function filterPill(label, id, options, value) {
+  function filterPill(label, id, options, value, defaultLabel = 'All') {
+    if (App.renderFilterPill) {
+      return App.renderFilterPill(label, id, options, value, defaultLabel);
+    }
     const isActive = !!value;
     return `
       <div class="filter-pill ${isActive ? 'filter-active' : ''}">
@@ -280,23 +290,45 @@ const RegisterModule = (() => {
       debounceTimer = setTimeout(() => { state.search = e.target.value.trim(); state.page = 1; fetchAndRender(); }, 300);
     });
 
-    ['reg-category', 'reg-subcategory', 'reg-files-count', 'reg-location', 'reg-bin', 'reg-status', 'reg-heldby'].forEach(id => {
-      const el = document.getElementById(id);
+    const cfg = App.config || {};
+    const lsts = cfg.lists || {};
+    const categories    = (cfg.categories || []).map(c => c.name);
+    const subcategories = (cfg.subcategories || []).map(c => c.name);
+    const locations     = lsts['Locations'] || [];
+    const bins          = lsts['Bin Locations'] || [];
+    const hods          = lsts['HODs'] || [];
+
+    const filterDefs = [
+      { id: 'reg-category', key: 'category', options: [{ value: '', text: 'All' }, ...categories.map(c => ({ value: c, text: c }))] },
+      { id: 'reg-subcategory', key: 'subCategory', options: [{ value: '', text: 'All' }, ...subcategories.map(c => ({ value: c, text: c }))] },
+      { id: 'reg-files-count', key: 'filesCount', options: [
+        { value: '', text: 'Any' },
+        { value: 'has_files', text: '📂 Has Files' },
+        { value: 'no_files', text: '📭 Empty' }
+      ] },
+      { id: 'reg-location', key: 'location', options: [{ value: '', text: 'All' }, ...locations.map(l => ({ value: l, text: l }))] },
+      { id: 'reg-bin', key: 'binLocation', options: [{ value: '', text: 'All' }, ...bins.map(b => ({ value: b, text: b }))] },
+      { id: 'reg-status', key: 'status', options: [
+        { value: '', text: 'All' },
+        { value: 'In office', text: '🟢 In Office' },
+        { value: 'Checked out', text: '🟡 Checked Out' },
+        { value: 'Archived', text: '📦 Archived' },
+        { value: 'Missing', text: '🔴 Missing' }
+      ] },
+      { id: 'reg-heldby', key: 'heldBy', options: [{ value: '', text: 'Anyone' }, ...hods.map(h => ({ value: h, text: h }))] }
+    ];
+
+    filterDefs.forEach(fd => {
+      if (App.bindFilterPill) {
+        App.bindFilterPill(fd.id, fd.options);
+      }
+      const el = document.getElementById(fd.id);
       if (!el) return;
       el.addEventListener('change', () => {
-        const map = {
-          'reg-category': 'category',
-          'reg-subcategory': 'subCategory',
-          'reg-files-count': 'filesCount',
-          'reg-location': 'location',
-          'reg-bin': 'binLocation',
-          'reg-status': 'status',
-          'reg-heldby': 'heldBy'
-        };
-        state[map[id]] = el.value;
+        state[fd.key] = el.value;
         state.page = 1;
         // Toggle pill active state
-        const pill = el.closest('.filter-pill');
+        const pill = document.getElementById(`pill-${fd.id}`) || el.closest('.filter-pill');
         if (pill) pill.classList.toggle('filter-active', !!el.value);
         // Toggle reset button state
         const resetBtn = document.getElementById('btn-clear-filters');
@@ -321,6 +353,7 @@ const RegisterModule = (() => {
     state.heldBy = '';
     state.oldFileNumber = '';
     state.page = 1;
+    if (state.selectedFiles) state.selectedFiles.clear();
 
     if (container) {
       container.innerHTML = buildShell();
@@ -402,8 +435,12 @@ const RegisterModule = (() => {
     }
     const rows = files.map(f => {
       const overdue = f.status === 'Checked out' && f.dueDate && new Date(f.dueDate) < new Date();
+      const isSelected = state.selectedFiles && state.selectedFiles.has(f.fileNumber);
       return `
-        <tr>
+        <tr class="${isSelected ? 'row-selected' : ''}" data-fn="${escapeHTML(f.fileNumber)}">
+          <td class="col-cb">
+            <input type="checkbox" class="reg-row-cb" data-fn="${escapeHTML(f.fileNumber)}" ${isSelected ? 'checked' : ''} aria-label="Select file ${escapeHTML(f.fileNumber)}">
+          </td>
           <td class="col-file-num"><a href="#file/${encodeURIComponent(f.fileNumber)}">${f.fileNumber}</a></td>
           <td>${f.clientName || '—'}</td>
           <td>${f.category || '—'}</td>
@@ -443,6 +480,7 @@ const RegisterModule = (() => {
       <div class="table-wrap">
         <table>
           <thead><tr>
+            <th class="col-cb"><input type="checkbox" id="reg-select-all" title="Select all on this page"></th>
             <th>File Number</th><th>Client</th><th>Category</th>
             <th>Sub-Category</th><th>Files</th><th>Details</th><th>Location</th>
             <th>Bin</th><th>Status</th><th>Held By</th><th>Actions</th>
@@ -471,7 +509,86 @@ const RegisterModule = (() => {
       </div>`;
   }
 
+  function updateBulkToolbar() {
+    const toolbar = document.getElementById('reg-bulk-toolbar');
+    const countEl = document.getElementById('reg-bulk-count');
+    const selectAllEl = document.getElementById('reg-select-all');
+    if (!toolbar) return;
+
+    const count = state.selectedFiles ? state.selectedFiles.size : 0;
+    if (countEl) {
+      countEl.textContent = `${count} file${count === 1 ? '' : 's'} selected`;
+    }
+
+    toolbar.classList.toggle('visible', count > 0);
+
+    // Update select-all checkbox state on current page
+    if (selectAllEl && state.files && state.files.length) {
+      const pageFns = state.files.map(f => f.fileNumber);
+      const selectedOnPage = pageFns.filter(fn => state.selectedFiles.has(fn)).length;
+      if (selectedOnPage === 0) {
+        selectAllEl.checked = false;
+        selectAllEl.indeterminate = false;
+      } else if (selectedOnPage === pageFns.length) {
+        selectAllEl.checked = true;
+        selectAllEl.indeterminate = false;
+      } else {
+        selectAllEl.checked = false;
+        selectAllEl.indeterminate = true;
+      }
+    }
+  }
+
   function bindTableActions(wrap) {
+    // Select-all checkbox
+    const selectAllCb = wrap.querySelector('#reg-select-all');
+    selectAllCb?.addEventListener('change', (e) => {
+      const isChecked = e.target.checked;
+      (state.files || []).forEach(f => {
+        if (isChecked) {
+          state.selectedFiles.add(f.fileNumber);
+        } else {
+          state.selectedFiles.delete(f.fileNumber);
+        }
+      });
+      wrap.querySelectorAll('.reg-row-cb').forEach(cb => {
+        cb.checked = isChecked;
+        cb.closest('tr')?.classList.toggle('row-selected', isChecked);
+      });
+      updateBulkToolbar();
+    });
+
+    // Individual row checkboxes
+    wrap.querySelectorAll('.reg-row-cb').forEach(cb => {
+      cb.addEventListener('change', (e) => {
+        e.stopPropagation();
+        const fn = cb.dataset.fn;
+        if (cb.checked) {
+          state.selectedFiles.add(fn);
+        } else {
+          state.selectedFiles.delete(fn);
+        }
+        cb.closest('tr')?.classList.toggle('row-selected', cb.checked);
+        updateBulkToolbar();
+      });
+    });
+
+    // Bulk toolbar action buttons
+    document.getElementById('btn-bulk-clear-action')?.addEventListener('click', () => {
+      state.selectedFiles.clear();
+      wrap.querySelectorAll('.reg-row-cb').forEach(cb => {
+        cb.checked = false;
+        cb.closest('tr')?.classList.remove('row-selected');
+      });
+      updateBulkToolbar();
+    });
+
+    document.getElementById('btn-bulk-update-action')?.addEventListener('click', openBulkUpdateModal);
+    document.getElementById('btn-bulk-print-action')?.addEventListener('click', handleBulkAddToPrint);
+
+    // Initial update of toolbar & select-all state
+    updateBulkToolbar();
+
     wrap.querySelectorAll('.col-actions button').forEach(btn => {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -501,6 +618,223 @@ const RegisterModule = (() => {
 
     wrap.querySelectorAll('.page-btn:not([disabled])').forEach(btn => {
       btn.addEventListener('click', () => { state.page = parseInt(btn.dataset.p); fetchAndRender(); });
+    });
+  }
+
+  function openBulkUpdateModal() {
+    const selectedList = Array.from(state.selectedFiles);
+    if (!selectedList.length) {
+      toast('Please select at least one file to update.', 'warning');
+      return;
+    }
+
+    const cfg = App.config || {};
+    const lsts = cfg.lists || {};
+    const categories = (cfg.categories || []).map(c => c.name);
+    const subcategories = (cfg.subcategories || []).map(c => c.name);
+    const locations = lsts['Locations'] || [];
+    const bins = lsts['Bin Locations'] || [];
+    const hods = lsts['HODs'] || [];
+    const statuses = ['In office', 'Checked out', 'Archived', 'Missing'];
+
+    const modalBody = `
+      <div class="bulk-modal-header">
+        <div style="font-weight:700;font-size:0.95rem;color:var(--gray-900);margin-bottom:4px;">
+          Updating ${selectedList.length} Selected File${selectedList.length > 1 ? 's' : ''}
+        </div>
+        <div style="font-size:0.8rem;color:var(--gray-600);">
+          💡 Check the box next to any field you wish to update. Unchecked fields will remain untouched for all selected files.
+        </div>
+      </div>
+
+      <form id="form-bulk-update">
+        <div class="bulk-modal-grid">
+          <!-- Location -->
+          <div class="bulk-field-card" id="card-blk-location">
+            <div class="bulk-field-top">
+              <input type="checkbox" class="bulk-field-toggle" id="chk-blk-location">
+              <label for="chk-blk-location" class="bulk-field-label">📍 Location</label>
+            </div>
+            <select class="form-control" id="val-blk-location">
+              <option value="">— Select Location —</option>
+              ${locations.map(l => `<option value="${escapeHTML(l)}">${escapeHTML(l)}</option>`).join('')}
+            </select>
+          </div>
+
+          <!-- Category -->
+          <div class="bulk-field-card" id="card-blk-category">
+            <div class="bulk-field-top">
+              <input type="checkbox" class="bulk-field-toggle" id="chk-blk-category">
+              <label for="chk-blk-category" class="bulk-field-label">📁 Category</label>
+            </div>
+            <select class="form-control" id="val-blk-category">
+              <option value="">— Select Category —</option>
+              ${categories.map(c => `<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('')}
+            </select>
+          </div>
+
+          <!-- Sub-Category -->
+          <div class="bulk-field-card" id="card-blk-subcat">
+            <div class="bulk-field-top">
+              <input type="checkbox" class="bulk-field-toggle" id="chk-blk-subcat">
+              <label for="chk-blk-subcat" class="bulk-field-label">📂 Sub-Category</label>
+            </div>
+            <select class="form-control" id="val-blk-subcat">
+              <option value="">— Select Sub-Category —</option>
+              ${subcategories.map(s => `<option value="${escapeHTML(s)}">${escapeHTML(s)}</option>`).join('')}
+            </select>
+          </div>
+
+          <!-- Bin Location -->
+          <div class="bulk-field-card" id="card-blk-bin">
+            <div class="bulk-field-top">
+              <input type="checkbox" class="bulk-field-toggle" id="chk-blk-bin">
+              <label for="chk-blk-bin" class="bulk-field-label">📦 Bin Location No.</label>
+            </div>
+            <input type="text" class="form-control" id="val-blk-bin" list="blk-bin-list" placeholder="e.g. Rack A-101">
+            <datalist id="blk-bin-list">
+              ${bins.map(b => `<option value="${escapeHTML(b)}">`).join('')}
+            </datalist>
+          </div>
+
+          <!-- Status -->
+          <div class="bulk-field-card" id="card-blk-status">
+            <div class="bulk-field-top">
+              <input type="checkbox" class="bulk-field-toggle" id="chk-blk-status">
+              <label for="chk-blk-status" class="bulk-field-label">🚦 Status</label>
+            </div>
+            <select class="form-control" id="val-blk-status">
+              <option value="">— Select Status —</option>
+              ${statuses.map(s => `<option value="${escapeHTML(s)}">${escapeHTML(s)}</option>`).join('')}
+            </select>
+          </div>
+
+          <!-- Held By -->
+          <div class="bulk-field-card" id="card-blk-heldby">
+            <div class="bulk-field-top">
+              <input type="checkbox" class="bulk-field-toggle" id="chk-blk-heldby">
+              <label for="chk-blk-heldby" class="bulk-field-label">👤 Held By</label>
+            </div>
+            <input type="text" class="form-control" id="val-blk-heldby" list="blk-heldby-list" placeholder="Custodian / Department">
+            <datalist id="blk-heldby-list">
+              ${hods.map(h => `<option value="${escapeHTML(h)}">`).join('')}
+            </datalist>
+          </div>
+        </div>
+      </form>`;
+
+    openModal({
+      title: `⚡ Bulk Update (${selectedList.length} Files)`,
+      size: 'modal-lg',
+      body: modalBody,
+      footer: `
+        <button class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+        <button class="btn btn-primary" id="btn-submit-bulk-update" style="font-weight:600;">
+          Apply to ${selectedList.length} Files
+        </button>`
+    });
+
+    // Toggle active styles on cards
+    ['location', 'category', 'subcat', 'bin', 'status', 'heldby'].forEach(f => {
+      const chk = document.getElementById(`chk-blk-${f}`);
+      const card = document.getElementById(`card-blk-${f}`);
+      chk?.addEventListener('change', () => {
+        card?.classList.toggle('active', chk.checked);
+      });
+    });
+
+    document.getElementById('btn-submit-bulk-update')?.addEventListener('click', () => {
+      const updates = {};
+      let anySelected = false;
+
+      if (document.getElementById('chk-blk-location')?.checked) {
+        updates.location = document.getElementById('val-blk-location')?.value || '';
+        anySelected = true;
+      }
+      if (document.getElementById('chk-blk-category')?.checked) {
+        updates.category = document.getElementById('val-blk-category')?.value || '';
+        anySelected = true;
+      }
+      if (document.getElementById('chk-blk-subcat')?.checked) {
+        updates.subCategory = document.getElementById('val-blk-subcat')?.value || '';
+        anySelected = true;
+      }
+      if (document.getElementById('chk-blk-bin')?.checked) {
+        updates.binLocation = document.getElementById('val-blk-bin')?.value || '';
+        anySelected = true;
+      }
+      if (document.getElementById('chk-blk-status')?.checked) {
+        updates.status = document.getElementById('val-blk-status')?.value || '';
+        anySelected = true;
+      }
+      if (document.getElementById('chk-blk-heldby')?.checked) {
+        updates.heldBy = document.getElementById('val-blk-heldby')?.value || '';
+        anySelected = true;
+      }
+
+      if (!anySelected) {
+        toast('Please check at least one field to update.', 'warning');
+        return;
+      }
+
+      const btn = document.getElementById('btn-submit-bulk-update');
+      if (btn) { btn.disabled = true; btn.textContent = 'Updating…'; }
+
+      api('bulkUpdateFiles', {}, {
+        fileNumbers: selectedList,
+        updates: updates,
+        updatedBy: App.user || 'System'
+      }).then(res => {
+        closeModal();
+        toast(`✅ Successfully updated ${res.count || selectedList.length} files!`, 'success');
+        state.selectedFiles.clear();
+        fetchAndRender();
+      }).catch(err => {
+        if (btn) { btn.disabled = false; btn.textContent = `Apply to ${selectedList.length} Files`; }
+        toast(`Update failed: ${err.message}`, 'error');
+      });
+    });
+  }
+
+  function handleBulkAddToPrint() {
+    const selectedList = Array.from(state.selectedFiles);
+    if (!selectedList.length) {
+      toast('Please select at least one file to add to print queue.', 'warning');
+      return;
+    }
+
+    const btn = document.getElementById('btn-bulk-print-action');
+    if (btn) { btn.disabled = true; btn.textContent = 'Adding…'; }
+
+    api('bulkAddToPrint', {}, {
+      fileNumbers: selectedList,
+      addedBy: App.user || 'System'
+    }).then(res => {
+      if (btn) { btn.disabled = false; btn.textContent = '🏷️ Add to Print'; }
+      state.selectedFiles.clear();
+      updateBulkToolbar();
+
+      openModal({
+        title: '🏷️ Added to Sticker Print Queue',
+        body: `
+          <div style="text-align:center;padding:16px 0;">
+            <div style="font-size:2.5rem;margin-bottom:12px;">✅</div>
+            <div style="font-size:1.1rem;font-weight:700;color:var(--gray-900);margin-bottom:6px;">
+              ${res.count || selectedList.length} Files Added to Print Queue!
+            </div>
+            <p style="color:var(--gray-600);font-size:0.88rem;max-width:420px;margin:0 auto 16px;line-height:1.4;">
+              These files have been marked in your <strong>Sticker Sheet</strong> and are ready for printing in the Print Stickers section.
+            </p>
+          </div>`,
+        footer: `
+          <button class="btn btn-secondary" onclick="closeModal()">Stay on Register</button>
+          <a href="#stickers" class="btn btn-primary" onclick="closeModal()" style="font-weight:600;">
+            Go to Print Stickers →
+          </a>`
+      });
+    }).catch(err => {
+      if (btn) { btn.disabled = false; btn.textContent = '🏷️ Add to Print'; }
+      toast(`Failed to add to print queue: ${err.message}`, 'error');
     });
   }
 

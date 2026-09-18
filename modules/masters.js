@@ -10,7 +10,7 @@ const MastersModule = (() => {
   const CLIENT_PAGE_SIZE = 50;
 
   function render(container, topbarActions, initialTab) {
-    if (initialTab && ['clients', 'categories', 'subcategories', 'lists'].includes(initialTab.toLowerCase())) {
+    if (initialTab && ['clients', 'categories', 'subcategories', 'lists', 'users'].includes(initialTab.toLowerCase())) {
       activeTab = initialTab.toLowerCase();
     }
     searchQuery = '';
@@ -67,6 +67,9 @@ const MastersModule = (() => {
               <button class="tab-btn ${activeTab==='lists'?'active':''}" data-tab="lists">
                 📋 Drop-down Lists <span class="badge" style="background:var(--gray-100);color:var(--gray-700);margin-left:4px;font-size:0.75rem">${totalListItems}</span>
               </button>
+              <button class="tab-btn ${activeTab==='users'?'active':''}" data-tab="users">
+                👤 Users & Access
+              </button>
             </div>
           </div>
         </div>
@@ -85,6 +88,7 @@ const MastersModule = (() => {
       case 'categories':    return renderCategoriesTab(cfg.categories || []);
       case 'subcategories': return renderSubcategoriesTab(cfg.subcategories || []);
       case 'lists':         return renderListsTab(cfg.lists || {});
+      case 'users':         return renderUsersTab();
       default:              return renderClientsTab(cfg.clients || []);
     }
   }
@@ -360,8 +364,240 @@ const MastersModule = (() => {
       </div>`;
   }
 
+  // ── 5. USERS & ACCESS TAB ────────────────────────────────────
+  function renderUsersTab() {
+    return `
+      <div class="card">
+        <div class="card-header" style="justify-content:space-between;flex-wrap:wrap;gap:12px">
+          <div>
+            <span class="card-title" style="font-size:1.05rem;font-weight:700">👥 System Users & Access Control</span>
+            <div style="font-size:0.82rem;color:var(--gray-600);margin-top:2px">
+              Users configured in the <strong>Users</strong> sheet tab. Default password for all users is <code>Test</code>
+            </div>
+          </div>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button class="btn btn-secondary btn-sm" id="btn-setup-users-sheet" style="height:34px;" title="Initialize or reset Users sheet with headers and default accounts">
+              ⚙️ Setup / Reset Users Sheet
+            </button>
+            <button class="btn btn-secondary btn-sm" id="btn-refresh-users" style="height:34px;">🔄 Refresh</button>
+            <button class="btn btn-primary btn-sm" id="btn-add-user-top" style="height:34px;">➕ Add User</button>
+          </div>
+        </div>
+        <div class="card-body" style="padding:0">
+          <div id="users-table-container" style="padding:24px;text-align:center;">
+            <div class="spinner"></div><span style="margin-left:8px;font-size:0.9rem;color:var(--gray-600)">Loading users from Google Sheet…</span>
+          </div>
+        </div>
+      </div>
+    `;
+  }
+
+  function loadAndRenderUsers(container) {
+    const wrap = container.querySelector('#users-table-container');
+    if (!wrap) return;
+
+    if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') {
+      wrap.innerHTML = `
+        <div style="padding:28px;text-align:center;">
+          <p style="color:var(--gray-600);margin-bottom:12px">Connect Google Apps Script Web App to view live users.</p>
+          <div style="display:inline-block;padding:8px 16px;background:var(--gray-100);border-radius:8px;font-size:0.85rem">
+            Default Demo Accounts: <strong>admin</strong>, <strong>anup.singh</strong>, <strong>gretex.staff</strong> (Password: <code>Test</code>)
+          </div>
+        </div>
+      `;
+      return;
+    }
+
+    api('getUsers').then(users => {
+      if (!Array.isArray(users) || !users.length) {
+        wrap.innerHTML = `
+          <div style="padding:36px 16px;text-align:center;">
+            <div style="font-size:2.8rem;margin-bottom:8px">👥</div>
+            <p style="color:var(--gray-800);font-weight:600;font-size:1rem;margin-bottom:4px">No users found in "Users" sheet.</p>
+            <p style="color:var(--gray-500);font-size:0.85rem;margin-bottom:16px">Click below to setup Row 1 headers and create default seed users with password "Test".</p>
+            <button class="btn btn-primary btn-sm" id="btn-setup-users-empty">⚙️ Run Setup Users Sheet</button>
+          </div>
+        `;
+        container.querySelector('#btn-setup-users-empty')?.addEventListener('click', () => triggerSetupUsers(container));
+        return;
+      }
+
+      wrap.innerHTML = `
+        <div style="overflow-x:auto">
+          <table>
+            <thead>
+              <tr>
+                <th>User ID</th>
+                <th>Username</th>
+                <th>Full Name</th>
+                <th>Role</th>
+                <th>Status</th>
+                <th>Email</th>
+                <th>Created At</th>
+                <th>Last Login</th>
+                <th style="text-align:center">Default Password</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${users.map(u => `
+                <tr>
+                  <td style="font-family:monospace;font-weight:700;color:var(--primary);">${escH(u.userId || '—')}</td>
+                  <td style="font-weight:600;color:var(--gray-900);"><code>${escH(u.username)}</code></td>
+                  <td style="font-weight:500;">${escH(u.fullName || '—')}</td>
+                  <td>
+                    <span class="badge" style="background:${u.role === 'Admin' ? '#fef7e0' : 'var(--primary-light)'};color:${u.role === 'Admin' ? '#b06000' : 'var(--primary)'};font-weight:700;">
+                      ${escH(u.role || 'Staff')}
+                    </span>
+                  </td>
+                  <td>
+                    <span class="badge ${u.status === 'Active' ? 'badge-inoffice' : 'badge-checkedout'}">
+                      ${escH(u.status || 'Active')}
+                    </span>
+                  </td>
+                  <td style="font-size:0.85rem;color:var(--gray-600);">${escH(u.email || '—')}</td>
+                  <td style="font-size:0.8rem;color:var(--gray-500);white-space:nowrap;">${escH(u.createdAt || '—')}</td>
+                  <td style="font-size:0.8rem;color:var(--gray-500);white-space:nowrap;">${escH(u.lastLogin || 'Never')}</td>
+                  <td style="text-align:center;font-size:0.8rem;"><code style="background:var(--gray-100);padding:2px 8px;border-radius:4px;font-weight:600;">Test</code></td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    }).catch(err => {
+      wrap.innerHTML = `<div style="padding:24px;text-align:center;color:var(--danger)">Error loading users: ${err.message}</div>`;
+    });
+
+    // Top actions
+    const refreshBtn = container.querySelector('#btn-refresh-users');
+    if (refreshBtn) refreshBtn.onclick = () => loadAndRenderUsers(container);
+
+    const setupBtn = container.querySelector('#btn-setup-users-sheet');
+    if (setupBtn) setupBtn.onclick = () => triggerSetupUsers(container);
+
+    const addBtn = container.querySelector('#btn-add-user-top');
+    if (addBtn) addBtn.onclick = () => openAddUserModal(container);
+  }
+
+  function triggerSetupUsers(container) {
+    openConfirmModal(
+      'Setup Users Sheet',
+      'This will configure Row 1 headers in the "Users" Google Sheet tab and seed default accounts (admin, anup.singh, gretex.staff, viewer) with password "Test". Continue?',
+      () => {
+        const wrap = container.querySelector('#users-table-container');
+        if (wrap) wrap.innerHTML = '<div class="spinner"></div><span style="margin-left:8px;color:var(--gray-600)">Configuring Users sheet in Google Sheets…</span>';
+        api('setupUsers', {}, { action: 'setupUsers' })
+          .then(res => {
+            toast(res.message || 'Users sheet setup completed!', 'success');
+            loadAndRenderUsers(container);
+          })
+          .catch(err => {
+            toast(err.message, 'error');
+            loadAndRenderUsers(container);
+          });
+      },
+      'Run Setup'
+    );
+  }
+
+  function openAddUserModal(container) {
+    const overlay = openModal({
+      title: '➕ Add New User',
+      body: `
+        <form id="form-new-user" novalidate style="display:flex;flex-direction:column;gap:12px;padding:4px 0;">
+          <div class="form-group">
+            <label class="form-label" style="font-size:0.8rem">Username <span class="required" style="color:var(--danger)">*</span></label>
+            <input type="text" class="form-control" id="nu-username" placeholder="e.g. rahul.sharma" required style="font-family:monospace;">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="font-size:0.8rem">Full Name <span class="required" style="color:var(--danger)">*</span></label>
+            <input type="text" class="form-control" id="nu-fullname" placeholder="e.g. Rahul Sharma" required>
+          </div>
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" style="font-size:0.8rem">Role</label>
+              <select class="form-control" id="nu-role">
+                <option value="Staff" selected>Staff</option>
+                <option value="Admin">Admin</option>
+                <option value="Viewer">Viewer</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size:0.8rem">Status</label>
+              <select class="form-control" id="nu-status">
+                <option value="Active" selected>Active</option>
+                <option value="Inactive">Inactive</option>
+              </select>
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="font-size:0.8rem">Email</label>
+            <input type="email" class="form-control" id="nu-email" placeholder="e.g. rahul@gretexgroup.com">
+          </div>
+          <div class="form-group">
+            <label class="form-label" style="font-size:0.8rem">Password</label>
+            <input type="text" class="form-control" id="nu-password" value="Test" style="background:var(--gray-100);">
+            <span style="font-size:0.75rem;color:var(--gray-500);margin-top:2px;display:block;">Default initial password is set to <strong>Test</strong></span>
+          </div>
+          <div id="nu-error" class="login-alert" style="display:none;margin-bottom:0;font-size:0.82rem;"></div>
+        </form>
+      `,
+      footer: `
+        <div style="display:flex;justify-content:flex-end;gap:8px;width:100%;">
+          <button class="btn btn-secondary" id="btn-cancel-nu">Cancel</button>
+          <button class="btn btn-primary" id="btn-submit-nu">Create User</button>
+        </div>
+      `
+    });
+
+    const cancelBtn = overlay.querySelector('#btn-cancel-nu');
+    const submitBtn = overlay.querySelector('#btn-submit-nu');
+    const errEl     = overlay.querySelector('#nu-error');
+
+    cancelBtn?.addEventListener('click', closeModal);
+
+    submitBtn?.addEventListener('click', async () => {
+      const username = overlay.querySelector('#nu-username')?.value.trim();
+      const fullName = overlay.querySelector('#nu-fullname')?.value.trim();
+      const role     = overlay.querySelector('#nu-role')?.value;
+      const status   = overlay.querySelector('#nu-status')?.value;
+      const email    = overlay.querySelector('#nu-email')?.value.trim();
+      const password = overlay.querySelector('#nu-password')?.value.trim() || 'Test';
+
+      if (!username || !fullName) {
+        errEl.textContent = 'Username and Full Name are required.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Creating…';
+      errEl.style.display = 'none';
+
+      try {
+        await api('addUser', {}, {
+          action: 'addUser',
+          username, fullName, role, status, email, password,
+          addedBy: App.user || 'Admin'
+        });
+        closeModal();
+        toast(`User "${username}" created successfully!`, 'success');
+        loadAndRenderUsers(container);
+      } catch(err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Create User';
+        errEl.textContent = err.message || 'Failed to create user.';
+        errEl.style.display = 'block';
+      }
+    });
+  }
+
   // ── EVENT BINDINGS ───────────────────────────────────────────
   function bindEvents(container) {
+    if (activeTab === 'users') {
+      loadAndRenderUsers(container);
+    }
+
     // 1. Top tabs switching
     container.querySelectorAll('.tabs .tab-btn[data-tab]').forEach(btn => {
       btn.addEventListener('click', () => {

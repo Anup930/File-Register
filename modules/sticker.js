@@ -160,7 +160,8 @@ const StickerModule = (() => {
     location: '',
     binLocation: '',
     status: '',
-    oldFileNumber: ''
+    oldFileNumber: '',
+    printQueue: 'queued'
   };
 
   // ── AUDIT LOG HELPER: RECORD STICKER PRINT ────────────────────
@@ -187,6 +188,14 @@ const StickerModule = (() => {
     }).catch(err => {
       console.warn('Failed to log sticker print:', err);
     });
+
+    // Mark Column Y as Printed in Register sheet
+    api('markStickersPrinted', {}, {
+      fileNumbers: fileList.map(f => f.fileNumber),
+      printedBy: App.user || 'System'
+    }).then(() => {
+      setTimeout(fetchStickerFiles, 800);
+    }).catch(() => {});
   }
 
   // ── PRINT HISTORY MODAL ───────────────────────────────────────
@@ -347,50 +356,12 @@ const StickerModule = (() => {
 
         <!-- Row 2: Filter Data Controls -->
         <div class="filter-row" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;">
-          <!-- Client Filter -->
-          <div class="filter-pill ${filterState.client ? 'filter-active' : ''}">
-            <span class="filter-pill-label">Client</span>
-            <select class="filter-select" id="stk-filter-client">
-              <option value="">All Clients</option>
-              ${clients.map(c => `<option value="${escapeHTML(c.name)}" ${filterState.client === c.name ? 'selected' : ''}>${escapeHTML(c.name)}</option>`).join('')}
-            </select>
-          </div>
-
-          <!-- Category Filter -->
-          <div class="filter-pill ${filterState.category ? 'filter-active' : ''}">
-            <span class="filter-pill-label">Category</span>
-            <select class="filter-select" id="stk-filter-category">
-              <option value="">All Categories</option>
-              ${categories.map(c => `<option value="${escapeHTML(c.name)}" ${filterState.category === c.name ? 'selected' : ''}>${escapeHTML(c.name)}</option>`).join('')}
-            </select>
-          </div>
-
-          <!-- Location Filter -->
-          <div class="filter-pill ${filterState.location ? 'filter-active' : ''}">
-            <span class="filter-pill-label">Location</span>
-            <select class="filter-select" id="stk-filter-location">
-              <option value="">All Locations</option>
-              ${locations.map(l => `<option value="${escapeHTML(l)}" ${filterState.location === l ? 'selected' : ''}>${escapeHTML(l)}</option>`).join('')}
-            </select>
-          </div>
-
-          <!-- Bin Filter -->
-          <div class="filter-pill ${filterState.binLocation ? 'filter-active' : ''}">
-            <span class="filter-pill-label">Bin</span>
-            <select class="filter-select" id="stk-filter-bin">
-              <option value="">All Bins</option>
-              ${bins.map(b => `<option value="${escapeHTML(b)}" ${filterState.binLocation === b ? 'selected' : ''}>${escapeHTML(b)}</option>`).join('')}
-            </select>
-          </div>
-
-          <!-- Status Filter -->
-          <div class="filter-pill ${filterState.status ? 'filter-active' : ''}">
-            <span class="filter-pill-label">Status</span>
-            <select class="filter-select" id="stk-filter-status">
-              <option value="">All Statuses</option>
-              ${statuses.map(s => `<option value="${escapeHTML(s)}" ${filterState.status === s ? 'selected' : ''}>${escapeHTML(s)}</option>`).join('')}
-            </select>
-          </div>
+          ${App.renderFilterPill ? App.renderFilterPill('Queue', 'stk-filter-queue', [{ value: 'queued', text: '📋 Queued for Print' }, { value: 'all', text: '🌐 All Files' }, { value: 'printed', text: '✅ Already Printed' }], filterState.printQueue || 'queued', 'Queued for Print') : ''}
+          ${App.renderFilterPill ? App.renderFilterPill('Client', 'stk-filter-client', [{ value: '', text: 'All Clients' }, ...clients.map(c => ({ value: c.name, text: c.name }))], filterState.client, 'All Clients') : ''}
+          ${App.renderFilterPill ? App.renderFilterPill('Category', 'stk-filter-category', [{ value: '', text: 'All Categories' }, ...categories.map(c => ({ value: c.name, text: c.name }))], filterState.category, 'All Categories') : ''}
+          ${App.renderFilterPill ? App.renderFilterPill('Location', 'stk-filter-location', [{ value: '', text: 'All Locations' }, ...locations.map(l => ({ value: l, text: l }))], filterState.location, 'All Locations') : ''}
+          ${App.renderFilterPill ? App.renderFilterPill('Bin', 'stk-filter-bin', [{ value: '', text: 'All Bins' }, ...bins.map(b => ({ value: b, text: b }))], filterState.binLocation, 'All Bins') : ''}
+          ${App.renderFilterPill ? App.renderFilterPill('Status', 'stk-filter-status', [{ value: '', text: 'All Statuses' }, ...statuses.map(s => ({ value: s, text: s }))], filterState.status, 'All Statuses') : ''}
         </div>
 
         <!-- Row 3: Pagination & Per Page -->
@@ -488,28 +459,32 @@ const StickerModule = (() => {
 
     // Dropdown filters
     const filterMap = [
-      { id: 'stk-filter-client',   key: 'client' },
-      { id: 'stk-filter-category', key: 'category' },
-      { id: 'stk-filter-location', key: 'location' },
-      { id: 'stk-filter-bin',      key: 'binLocation' },
-      { id: 'stk-filter-status',   key: 'status' }
+      { id: 'stk-filter-queue',    key: 'printQueue',  options: [{ value: 'queued', text: '📋 Queued for Print' }, { value: 'all', text: '🌐 All Files' }, { value: 'printed', text: '✅ Already Printed' }] },
+      { id: 'stk-filter-client',   key: 'client',      options: [{ value: '', text: 'All Clients' }, ...clients.map(c => ({ value: c.name, text: c.name }))] },
+      { id: 'stk-filter-category', key: 'category',    options: [{ value: '', text: 'All Categories' }, ...categories.map(c => ({ value: c.name, text: c.name }))] },
+      { id: 'stk-filter-location', key: 'location',    options: [{ value: '', text: 'All Locations' }, ...locations.map(l => ({ value: l, text: l }))] },
+      { id: 'stk-filter-bin',      key: 'binLocation', options: [{ value: '', text: 'All Bins' }, ...bins.map(b => ({ value: b, text: b }))] },
+      { id: 'stk-filter-status',   key: 'status',      options: [{ value: '', text: 'All Statuses' }, ...statuses.map(s => ({ value: s, text: s }))] }
     ];
 
     filterMap.forEach(item => {
+      if (App.bindFilterPill) {
+        App.bindFilterPill(item.id, item.options);
+      }
       const el = document.getElementById(item.id);
       if (!el) return;
       el.addEventListener('change', () => {
         filterState[item.key] = el.value;
         currentPage = 1;
-        const pill = el.closest('.filter-pill');
-        if (pill) pill.classList.toggle('filter-active', !!el.value);
+        const pill = document.getElementById(`pill-${item.id}`) || el.closest('.filter-pill');
+        if (pill) pill.classList.toggle('filter-active', item.key === 'printQueue' ? el.value !== 'all' : !!el.value);
         fetchStickerFiles();
       });
     });
 
     // Clear Filters
     document.getElementById('btn-stk-clear-filters')?.addEventListener('click', () => {
-      filterState = { search: '', client: '', category: '', subCategory: '', location: '', binLocation: '', status: '', oldFileNumber: '' };
+      filterState = { search: '', client: '', category: '', subCategory: '', location: '', binLocation: '', status: '', oldFileNumber: '', printQueue: 'queued' };
       currentPage = 1;
       renderPrintPage(container, topbarActions);
     });
@@ -601,6 +576,7 @@ const StickerModule = (() => {
       binLocation: filterState.binLocation,
       status: filterState.status,
       oldFileNumber: filterState.oldFileNumber,
+      printQueue: filterState.printQueue || 'queued',
       includeArchived: filterState.status === 'Archived' ? 'true' : 'false'
     };
     
