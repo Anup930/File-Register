@@ -376,6 +376,11 @@ const MastersModule = (() => {
             </div>
           </div>
           <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            ${App.currentUser?.role === 'Admin' ? `
+              <a href="admin-guide.html" target="_blank" class="btn btn-secondary btn-sm" style="height:34px;color:#b06000;background:#fef7e0;border-color:#feefc3;font-weight:600;display:inline-flex;align-items:center;gap:6px;">
+                🛡️ Access Guide ↗
+              </a>
+            ` : ''}
             <button class="btn btn-secondary btn-sm" id="btn-setup-users-sheet" style="height:34px;" title="Initialize or reset Users sheet with headers and default accounts">
               ⚙️ Setup / Reset Users Sheet
             </button>
@@ -432,38 +437,57 @@ const MastersModule = (() => {
                 <th>Full Name</th>
                 <th>Role</th>
                 <th>Status</th>
+                <th>Access & Permissions</th>
                 <th>Email</th>
-                <th>Created At</th>
                 <th>Last Login</th>
-                <th style="text-align:center">Default Password</th>
+                <th style="text-align:center">Actions</th>
               </tr>
             </thead>
             <tbody>
-              ${users.map(u => `
-                <tr>
-                  <td style="font-family:monospace;font-weight:700;color:var(--primary);">${escH(u.userId || '—')}</td>
-                  <td style="font-weight:600;color:var(--gray-900);"><code>${escH(u.username)}</code></td>
-                  <td style="font-weight:500;">${escH(u.fullName || '—')}</td>
-                  <td>
-                    <span class="badge" style="background:${u.role === 'Admin' ? '#fef7e0' : 'var(--primary-light)'};color:${u.role === 'Admin' ? '#b06000' : 'var(--primary)'};font-weight:700;">
-                      ${escH(u.role || 'Staff')}
-                    </span>
-                  </td>
-                  <td>
-                    <span class="badge ${u.status === 'Active' ? 'badge-inoffice' : 'badge-checkedout'}">
-                      ${escH(u.status || 'Active')}
-                    </span>
-                  </td>
-                  <td style="font-size:0.85rem;color:var(--gray-600);">${escH(u.email || '—')}</td>
-                  <td style="font-size:0.8rem;color:var(--gray-500);white-space:nowrap;">${escH(u.createdAt || '—')}</td>
-                  <td style="font-size:0.8rem;color:var(--gray-500);white-space:nowrap;">${escH(u.lastLogin || 'Never')}</td>
-                  <td style="text-align:center;font-size:0.8rem;"><code style="background:var(--gray-100);padding:2px 8px;border-radius:4px;font-weight:600;">Test</code></td>
-                </tr>
-              `).join('')}
+              ${users.map(u => {
+                const isFullAdmin = u.role === 'Admin' || (u.permissions && u.permissions.includes('*'));
+                const permBadge = isFullAdmin
+                  ? `<span class="badge" style="background:#e8f0fe;color:#1a73e8;font-weight:700;">👑 Full Access</span>`
+                  : `<span class="badge" style="background:var(--gray-100);color:var(--gray-800);font-weight:600;">🔑 ${(u.permissions || []).length} Access Rights</span>`;
+                return `
+                  <tr>
+                    <td style="font-family:monospace;font-weight:700;color:var(--primary);">${escH(u.userId || '—')}</td>
+                    <td style="font-weight:600;color:var(--gray-900);"><code>${escH(u.username)}</code></td>
+                    <td style="font-weight:500;">${escH(u.fullName || '—')}</td>
+                    <td>
+                      <span class="badge" style="background:${u.role === 'Admin' ? '#fef7e0' : 'var(--primary-light)'};color:${u.role === 'Admin' ? '#b06000' : 'var(--primary)'};font-weight:700;">
+                        ${escH(u.role || 'Staff')}
+                      </span>
+                    </td>
+                    <td>
+                      <span class="badge ${u.status === 'Active' ? 'badge-inoffice' : 'badge-checkedout'}">
+                        ${escH(u.status || 'Active')}
+                      </span>
+                    </td>
+                    <td>${permBadge}</td>
+                    <td style="font-size:0.85rem;color:var(--gray-600);">${escH(u.email || '—')}</td>
+                    <td style="font-size:0.8rem;color:var(--gray-500);white-space:nowrap;">${escH(u.lastLogin || 'Never')}</td>
+                    <td style="text-align:center;">
+                      <button class="btn btn-secondary btn-sm btn-edit-user" data-username="${escH(u.username)}" style="padding:4px 10px;font-size:0.75rem;font-weight:600;display:inline-flex;align-items:center;gap:4px;">
+                        ✏️ Edit & Access
+                      </button>
+                    </td>
+                  </tr>
+                `;
+              }).join('')}
             </tbody>
           </table>
         </div>
       `;
+
+      // Bind Edit User buttons
+      wrap.querySelectorAll('.btn-edit-user').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const uname = btn.dataset.username;
+          const target = users.find(x => x.username === uname);
+          if (target) openEditUserModal(target, container);
+        });
+      });
     }).catch(err => {
       wrap.innerHTML = `<div style="padding:24px;text-align:center;color:var(--danger)">Error loading users: ${err.message}</div>`;
     });
@@ -500,54 +524,156 @@ const MastersModule = (() => {
     );
   }
 
+  function buildPermissionsMatrixHTML(currentPerms = [], role = 'Staff') {
+    const isFullAdmin = role === 'Admin' || currentPerms.includes('*');
+    const catalog = App.getAvailablePermissions ? App.getAvailablePermissions() : [];
+
+    return `
+      <div class="perm-presets-bar">
+        <span style="font-size:0.75rem;font-weight:700;color:var(--gray-700);text-transform:uppercase;margin-right:4px;">Presets:</span>
+        <button type="button" class="perm-preset-btn" data-preset="admin">👑 Full Admin</button>
+        <button type="button" class="perm-preset-btn" data-preset="staff">💼 Standard Staff</button>
+        <button type="button" class="perm-preset-btn" data-preset="viewer">👁️ Read-Only Viewer</button>
+        <button type="button" class="perm-preset-btn" data-preset="clear" style="color:var(--danger)">🧹 Clear All</button>
+      </div>
+
+      <div class="perm-matrix-container" id="perm-matrix-wrap">
+        ${catalog.map(group => `
+          <div class="perm-group-card">
+            <div class="perm-group-header">
+              <span>${group.icon}</span>
+              <span>${group.group}</span>
+            </div>
+            <div class="perm-group-items">
+              ${group.items.map(item => {
+                const isChecked = isFullAdmin || currentPerms.includes(item.key);
+                return `
+                  <label class="perm-item-row">
+                    <input type="checkbox" class="perm-cb" value="${item.key}" ${isChecked ? 'checked' : ''}>
+                    <div class="perm-item-text">
+                      <span class="perm-item-label">${item.label}</span>
+                      <div class="perm-item-desc">${item.desc}</div>
+                    </div>
+                  </label>
+                `;
+              }).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  function bindPermissionsPresets(modalEl) {
+    modalEl.querySelectorAll('.perm-preset-btn').forEach(btn => {
+      btn.onclick = (e) => {
+        e.preventDefault();
+        const preset = btn.dataset.preset;
+        const cbs = modalEl.querySelectorAll('.perm-cb');
+        if (preset === 'admin') {
+          cbs.forEach(cb => cb.checked = true);
+        } else if (preset === 'staff') {
+          const staffPerms = ['register.view', 'register.create', 'register.edit', 'register.bulk', 'checkout.manage', 'stickers.print'];
+          cbs.forEach(cb => { cb.checked = staffPerms.includes(cb.value); });
+        } else if (preset === 'viewer') {
+          cbs.forEach(cb => { cb.checked = (cb.value === 'register.view'); });
+        } else if (preset === 'clear') {
+          cbs.forEach(cb => cb.checked = false);
+        }
+      };
+    });
+  }
+
+  function getSelectedPermissions(modalEl, role) {
+    if (role === 'Admin') return ['*'];
+    const selected = [];
+    modalEl.querySelectorAll('.perm-cb:checked').forEach(cb => {
+      selected.push(cb.value);
+    });
+    return selected;
+  }
+
   function openAddUserModal(container) {
+    const defaultStaffPerms = ['register.view', 'register.create', 'register.edit', 'register.bulk', 'checkout.manage', 'stickers.print'];
     const overlay = openModal({
-      title: '➕ Add New User',
+      title: '➕ Add New User & Access Setup',
+      size: 'modal-lg',
       body: `
-        <form id="form-new-user" novalidate style="display:flex;flex-direction:column;gap:12px;padding:4px 0;">
-          <div class="form-group">
-            <label class="form-label" style="font-size:0.8rem">Username <span class="required" style="color:var(--danger)">*</span></label>
-            <input type="text" class="form-control" id="nu-username" placeholder="e.g. rahul.sharma" required style="font-family:monospace;">
-          </div>
-          <div class="form-group">
-            <label class="form-label" style="font-size:0.8rem">Full Name <span class="required" style="color:var(--danger)">*</span></label>
-            <input type="text" class="form-control" id="nu-fullname" placeholder="e.g. Rahul Sharma" required>
-          </div>
+        <form id="form-new-user" novalidate style="display:flex;flex-direction:column;gap:14px;padding:4px 0;">
           <div class="form-grid">
             <div class="form-group">
-              <label class="form-label" style="font-size:0.8rem">Role</label>
+              <label class="form-label" style="font-size:0.8rem">Username <span class="required" style="color:var(--danger)">*</span></label>
+              <input type="text" class="form-control" id="nu-username" placeholder="e.g. rahul.sharma" required style="font-family:monospace;">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size:0.8rem">Full Name <span class="required" style="color:var(--danger)">*</span></label>
+              <input type="text" class="form-control" id="nu-fullname" placeholder="e.g. Rahul Sharma" required>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" style="font-size:0.8rem">Role Profile</label>
               <select class="form-control" id="nu-role">
-                <option value="Staff" selected>Staff</option>
-                <option value="Admin">Admin</option>
-                <option value="Viewer">Viewer</option>
+                <option value="Staff" selected>Staff (Standard Operator)</option>
+                <option value="Admin">Admin (Full Access)</option>
+                <option value="Viewer">Viewer (Read-Only)</option>
               </select>
             </div>
             <div class="form-group">
-              <label class="form-label" style="font-size:0.8rem">Status</label>
+              <label class="form-label" style="font-size:0.8rem">Account Status</label>
               <select class="form-control" id="nu-status">
                 <option value="Active" selected>Active</option>
                 <option value="Inactive">Inactive</option>
               </select>
             </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="font-size:0.8rem">Email</label>
-            <input type="email" class="form-control" id="nu-email" placeholder="e.g. rahul@gretexgroup.com">
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" style="font-size:0.8rem">Email Address</label>
+              <input type="email" class="form-control" id="nu-email" placeholder="e.g. rahul@gretexgroup.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size:0.8rem">Initial Password</label>
+              <input type="text" class="form-control" id="nu-password" value="Test" style="background:var(--gray-100);">
+            </div>
           </div>
-          <div class="form-group">
-            <label class="form-label" style="font-size:0.8rem">Password</label>
-            <input type="text" class="form-control" id="nu-password" value="Test" style="background:var(--gray-100);">
-            <span style="font-size:0.75rem;color:var(--gray-500);margin-top:2px;display:block;">Default initial password is set to <strong>Test</strong></span>
+
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <label class="form-label" style="font-size:0.82rem;font-weight:700;color:var(--gray-900);margin-bottom:0;">
+                🛡️ Granular Permissions & Capabilities
+              </label>
+              <span style="font-size:0.75rem;color:var(--gray-500);">Customize access to specific actions</span>
+            </div>
+            ${buildPermissionsMatrixHTML(defaultStaffPerms, 'Staff')}
           </div>
+
           <div id="nu-error" class="login-alert" style="display:none;margin-bottom:0;font-size:0.82rem;"></div>
         </form>
       `,
       footer: `
         <div style="display:flex;justify-content:flex-end;gap:8px;width:100%;">
           <button class="btn btn-secondary" id="btn-cancel-nu">Cancel</button>
-          <button class="btn btn-primary" id="btn-submit-nu">Create User</button>
+          <button class="btn btn-primary" id="btn-submit-nu" style="font-weight:600;">Create User & Assign Access</button>
         </div>
       `
+    });
+
+    bindPermissionsPresets(overlay);
+
+    overlay.querySelector('#nu-role')?.addEventListener('change', (e) => {
+      const r = e.target.value;
+      const cbs = overlay.querySelectorAll('.perm-cb');
+      if (r === 'Admin') {
+        cbs.forEach(cb => cb.checked = true);
+      } else if (r === 'Staff') {
+        const staffPerms = ['register.view', 'register.create', 'register.edit', 'register.bulk', 'checkout.manage', 'stickers.print'];
+        cbs.forEach(cb => { cb.checked = staffPerms.includes(cb.value); });
+      } else if (r === 'Viewer') {
+        cbs.forEach(cb => { cb.checked = (cb.value === 'register.view'); });
+      }
     });
 
     const cancelBtn = overlay.querySelector('#btn-cancel-nu');
@@ -563,6 +689,7 @@ const MastersModule = (() => {
       const status   = overlay.querySelector('#nu-status')?.value;
       const email    = overlay.querySelector('#nu-email')?.value.trim();
       const password = overlay.querySelector('#nu-password')?.value.trim() || 'Test';
+      const permissions = getSelectedPermissions(overlay, role);
 
       if (!username || !fullName) {
         errEl.textContent = 'Username and Full Name are required.';
@@ -578,15 +705,157 @@ const MastersModule = (() => {
         await api('addUser', {}, {
           action: 'addUser',
           username, fullName, role, status, email, password,
+          permissions,
           addedBy: App.user || 'Admin'
         });
         closeModal();
-        toast(`User "${username}" created successfully!`, 'success');
+        toast(`User "${username}" created successfully with access rights!`, 'success');
         loadAndRenderUsers(container);
       } catch(err) {
         submitBtn.disabled = false;
-        submitBtn.textContent = 'Create User';
+        submitBtn.textContent = 'Create User & Assign Access';
         errEl.textContent = err.message || 'Failed to create user.';
+        errEl.style.display = 'block';
+      }
+    });
+  }
+
+  function openEditUserModal(u, container) {
+    const currentPerms = Array.isArray(u.permissions) ? u.permissions : [];
+    const overlay = openModal({
+      title: `✏️ Edit User & Access Control — ${u.username}`,
+      size: 'modal-lg',
+      body: `
+        <form id="form-edit-user" novalidate style="display:flex;flex-direction:column;gap:14px;padding:4px 0;">
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" style="font-size:0.8rem">Username</label>
+              <input type="text" class="form-control" id="eu-username" value="${escH(u.username)}" disabled style="background:var(--gray-100);font-family:monospace;font-weight:700;">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size:0.8rem">Full Name <span class="required" style="color:var(--danger)">*</span></label>
+              <input type="text" class="form-control" id="eu-fullname" value="${escH(u.fullName || '')}" required>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" style="font-size:0.8rem">Role Profile</label>
+              <select class="form-control" id="eu-role">
+                <option value="Staff" ${u.role === 'Staff' ? 'selected' : ''}>Staff (Standard Operator)</option>
+                <option value="Admin" ${u.role === 'Admin' ? 'selected' : ''}>Admin (Full Access)</option>
+                <option value="Viewer" ${u.role === 'Viewer' ? 'selected' : ''}>Viewer (Read-Only)</option>
+              </select>
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size:0.8rem">Account Status</label>
+              <select class="form-control" id="eu-status">
+                <option value="Active" ${u.status === 'Active' ? 'selected' : ''}>Active</option>
+                <option value="Inactive" ${u.status === 'Inactive' ? 'selected' : ''}>Inactive (Deactivated)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="form-grid">
+            <div class="form-group">
+              <label class="form-label" style="font-size:0.8rem">Email Address</label>
+              <input type="email" class="form-control" id="eu-email" value="${escH(u.email || '')}" placeholder="user@gretexgroup.com">
+            </div>
+            <div class="form-group">
+              <label class="form-label" style="font-size:0.8rem">Reset Password <span style="color:var(--gray-500);font-weight:normal;">(optional)</span></label>
+              <input type="text" class="form-control" id="eu-password" placeholder="Leave empty to keep current password">
+            </div>
+          </div>
+
+          <div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
+              <label class="form-label" style="font-size:0.82rem;font-weight:700;color:var(--gray-900);margin-bottom:0;">
+                🛡️ Granular Permissions & Capabilities
+              </label>
+              <span style="font-size:0.75rem;color:var(--gray-500);">Control exactly what this user can do</span>
+            </div>
+            ${buildPermissionsMatrixHTML(currentPerms, u.role)}
+          </div>
+
+          <div id="eu-error" class="login-alert" style="display:none;margin-bottom:0;font-size:0.82rem;"></div>
+        </form>
+      `,
+      footer: `
+        <div style="display:flex;justify-content:flex-end;gap:8px;width:100%;">
+          <button class="btn btn-secondary" id="btn-cancel-eu">Cancel</button>
+          <button class="btn btn-primary" id="btn-submit-eu" style="font-weight:600;">Save User & Access</button>
+        </div>
+      `
+    });
+
+    bindPermissionsPresets(overlay);
+
+    overlay.querySelector('#eu-role')?.addEventListener('change', (e) => {
+      const r = e.target.value;
+      const cbs = overlay.querySelectorAll('.perm-cb');
+      if (r === 'Admin') {
+        cbs.forEach(cb => cb.checked = true);
+      } else if (r === 'Staff') {
+        const staffPerms = ['register.view', 'register.create', 'register.edit', 'register.bulk', 'checkout.manage', 'stickers.print'];
+        cbs.forEach(cb => { cb.checked = staffPerms.includes(cb.value); });
+      } else if (r === 'Viewer') {
+        cbs.forEach(cb => { cb.checked = (cb.value === 'register.view'); });
+      }
+    });
+
+    const cancelBtn = overlay.querySelector('#btn-cancel-eu');
+    const submitBtn = overlay.querySelector('#btn-submit-eu');
+    const errEl     = overlay.querySelector('#eu-error');
+
+    cancelBtn?.addEventListener('click', closeModal);
+
+    submitBtn?.addEventListener('click', async () => {
+      const fullName = overlay.querySelector('#eu-fullname')?.value.trim();
+      const role     = overlay.querySelector('#eu-role')?.value;
+      const status   = overlay.querySelector('#eu-status')?.value;
+      const email    = overlay.querySelector('#eu-email')?.value.trim();
+      const password = overlay.querySelector('#eu-password')?.value.trim();
+      const permissions = getSelectedPermissions(overlay, role);
+
+      if (!fullName) {
+        errEl.textContent = 'Full Name is required.';
+        errEl.style.display = 'block';
+        return;
+      }
+
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Saving…';
+      errEl.style.display = 'none';
+
+      try {
+        await api('updateUser', {}, {
+          action: 'updateUser',
+          username: u.username,
+          fullName,
+          role,
+          status,
+          email,
+          password: password || undefined,
+          permissions,
+          updatedBy: App.user || 'Admin'
+        });
+
+        // If current logged-in user edited their own profile, sync session
+        if (App.currentUser && App.currentUser.username === u.username) {
+          App.currentUser.fullName = fullName;
+          App.currentUser.role = role;
+          App.currentUser.permissions = permissions;
+          localStorage.setItem('fr_user_session', JSON.stringify(App.currentUser));
+          updateUserUI();
+        }
+
+        closeModal();
+        toast(`User "${u.username}" access rights updated successfully!`, 'success');
+        loadAndRenderUsers(container);
+      } catch(err) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = 'Save User & Access';
+        errEl.textContent = err.message || 'Failed to update user.';
         errEl.style.display = 'block';
       }
     });

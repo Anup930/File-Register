@@ -40,15 +40,20 @@ const FileFormModule = (() => {
     ]).then(([file, log, subFiles]) => {
       const regFiles = (subFiles && subFiles.length) ? subFiles : (file.files || []);
 
+      const canEdit = App.can ? App.can('register.edit') : true;
+      const canDelete = App.can ? App.can('register.delete') : true;
+      const canCheckout = App.can ? App.can('checkout.manage') : true;
+      const canSticker = App.can ? App.can('stickers.print') : true;
+
       topbarActions.innerHTML = `
         <button class="btn btn-secondary btn-sm" id="d-btn-back">← Register</button>
-        <button class="btn btn-warning btn-sm" id="d-btn-quick-status" style="font-weight:600;">⚡ Change Status / Location</button>
-        <button class="btn btn-secondary btn-sm" id="d-btn-edit">✏️ Edit</button>
-        <button class="btn btn-${file.status === 'Checked out' ? 'success' : 'warning'} btn-sm" id="d-btn-checkout">
+        ${canEdit ? '<button class="btn btn-warning btn-sm" id="d-btn-quick-status" style="font-weight:600;">⚡ Change Status / Location</button>' : ''}
+        ${canEdit ? '<button class="btn btn-secondary btn-sm" id="d-btn-edit">✏️ Edit</button>' : ''}
+        ${canCheckout ? `<button class="btn btn-${file.status === 'Checked out' ? 'success' : 'warning'} btn-sm" id="d-btn-checkout">
           ${file.status === 'Checked out' ? '↩️ Return' : '📤 Check Out'}
-        </button>
-        <button class="btn btn-secondary btn-sm" id="d-btn-sticker">🏷️ Sticker</button>
-        <button class="btn btn-danger btn-sm" id="d-btn-delete">🗑️</button>`;
+        </button>` : ''}
+        ${canSticker ? '<button class="btn btn-secondary btn-sm" id="d-btn-sticker">🏷️ Sticker</button>' : ''}
+        ${canDelete ? '<button class="btn btn-danger btn-sm" id="d-btn-delete">🗑️</button>' : ''}`;
 
       container.innerHTML = buildDetailHTML(file, log, regFiles);
 
@@ -87,6 +92,24 @@ const FileFormModule = (() => {
         openAddRegisterFileModal(fileNumber, null, () => renderDetail(container, topbarActions, fileNumber));
       });
 
+      // Bind Empty / Clean Register button
+      qs('#btn-clean-reg-files')?.addEventListener('click', () => {
+        openConfirmModal(
+          'Empty / Clean Register',
+          `Are you sure you want to remove all <strong>${regFiles.length}</strong> file(s) from Register <strong>${fileNumber}</strong>?<br><br><span style="font-size:0.85rem;color:var(--gray-600);">Note: Files will be marked as deleted in the sheet (Column L: Delete = Yes), and complete Activity History will remain preserved in the Activity Log.</span>`,
+          () => {
+            api('cleanRegisterFiles', {}, { action: 'cleanRegisterFiles', registerNumber: fileNumber, deletedBy: App.user || 'System' })
+              .then(res => {
+                toast(`Register cleaned! ${res.cleanedCount !== undefined ? res.cleanedCount : regFiles.length} file(s) marked as deleted.`, 'success');
+                renderDetail(container, topbarActions, fileNumber);
+              })
+              .catch(err => toast(err.message, 'error'));
+          },
+          'Empty Register',
+          true
+        );
+      });
+
       // Bind Edit & Delete on Subfiles
       qsa('.btn-edit-subfile', container).forEach(b => {
         b.addEventListener('click', () => {
@@ -101,14 +124,20 @@ const FileFormModule = (() => {
           const fid = b.dataset.fileId;
           const target = regFiles.find(x => x.fileId === fid);
           const fname = target ? target.fileName : fid;
-          confirmDialog(`Delete file <strong>${fid}</strong> (${fname}) from this register?`, () => {
-            api('deleteRegisterFile', {}, { action: 'deleteRegisterFile', fileId: fid, deletedBy: App.user })
-              .then(() => {
-                toast('File deleted from register', 'success');
-                renderDetail(container, topbarActions, fileNumber);
-              })
-              .catch(err => toast(err.message, 'error'));
-          }, 'Delete');
+          openConfirmModal(
+            'Delete File',
+            `Remove file <strong>${fid}</strong> (${escapeHTML(fname)}) from this register?<br><br><span style="font-size:0.85rem;color:var(--gray-600);">Note: File will be marked as deleted in the sheet, keeping Activity Log intact.</span>`,
+            () => {
+              api('deleteRegisterFile', {}, { action: 'deleteRegisterFile', fileId: fid, deletedBy: App.user || 'System' })
+                .then(() => {
+                  toast('File deleted from register', 'success');
+                  renderDetail(container, topbarActions, fileNumber);
+                })
+                .catch(err => toast(err.message, 'error'));
+            },
+            'Delete',
+            true
+          );
         });
       });
 
@@ -127,6 +156,10 @@ const FileFormModule = (() => {
   }
 
   function buildDetailHTML(file, log, regFiles = []) {
+    const canEdit = App.can ? App.can('register.edit') : true;
+    const canDelete = App.can ? App.can('register.delete') : true;
+    const canCreate = App.can ? App.can('register.create') : true;
+
     const overdue = file.status === 'Checked out' && file.dueDate && new Date(file.dueDate) < new Date();
     const tags = (file.tags || '').split(',').filter(t => t.trim()).map(t => `<span class="chip">${t.trim()}</span>`).join('');
 
@@ -164,8 +197,9 @@ const FileFormModule = (() => {
                   <td style="font-size:.8rem;color:var(--gray-500);white-space:nowrap">${f.createdBy || '—'}</td>
                   <td style="text-align:center">
                     <div class="col-actions" style="justify-content:center">
-                      <button class="btn btn-ghost btn-icon btn-sm btn-edit-subfile" data-file-id="${f.fileId}" title="Edit File">✏️</button>
-                      <button class="btn btn-ghost btn-icon btn-sm btn-del-subfile" data-file-id="${f.fileId}" title="Delete File" style="color:var(--danger)">🗑️</button>
+                      ${canEdit ? `<button class="btn btn-ghost btn-icon btn-sm btn-edit-subfile" data-file-id="${f.fileId}" title="Edit File">✏️</button>` : ''}
+                      ${canDelete ? `<button class="btn btn-ghost btn-icon btn-sm btn-del-subfile" data-file-id="${f.fileId}" title="Delete File" style="color:var(--danger)">🗑️</button>` : ''}
+                      ${(!canEdit && !canDelete) ? '<span style="color:var(--gray-400);font-size:0.8rem;">—</span>' : ''}
                     </div>
                   </td>
                 </tr>
@@ -177,7 +211,7 @@ const FileFormModule = (() => {
         <div class="table-empty" style="padding:36px 16px;border:1px dashed var(--gray-300);border-radius:var(--radius);margin-top:10px;">
           <div class="empty-icon" style="font-size:2.2rem">📂</div>
           <p style="font-size:0.95rem;color:var(--gray-600);margin-bottom:12px">No files added to this register yet.</p>
-          <button class="btn btn-primary btn-sm" id="btn-add-reg-file-empty">➕ Add First File</button>
+          ${canCreate ? '<button class="btn btn-primary btn-sm" id="btn-add-reg-file-empty">➕ Add First File</button>' : ''}
         </div>`;
 
     return `
@@ -190,10 +224,14 @@ const FileFormModule = (() => {
             </div>
             <div style="display:flex;gap:8px;align-items:center;">
               <span class="badge" style="background:var(--primary-light);color:var(--primary);font-size:.85rem;padding:4px 10px;">📂 ${regFiles.length} Files Inside</span>
-              <span id="d-badge-status-trigger" style="cursor:pointer;" title="Click to change status or location">
-                ${statusBadge(file.status)} <span class="quick-edit-hint" style="opacity:1;">✏️</span>
-              </span>
-              <button class="btn btn-sm" id="d-btn-card-quick-status" style="font-size:0.75rem;padding:3px 10px;font-weight:600;background:#fef7e0;color:#b06000;border:1px solid #feefc3;" title="Change Status, Location, Bin">⚡ Change</button>
+              ${canEdit ? `
+                <span id="d-badge-status-trigger" style="cursor:pointer;" title="Click to change status or location">
+                  ${statusBadge(file.status)} <span class="quick-edit-hint" style="opacity:1;">✏️</span>
+                </span>
+                <button class="btn btn-sm" id="d-btn-card-quick-status" style="font-size:0.75rem;padding:3px 10px;font-weight:600;background:#fef7e0;color:#b06000;border:1px solid #feefc3;" title="Change Status, Location, Bin">⚡ Change</button>
+              ` : `
+                <span>${statusBadge(file.status)}</span>
+              `}
             </div>
           </div>
           ${overdue ? `<div style="background:var(--danger-bg);color:var(--danger);padding:8px 20px;font-size:.85rem;font-weight:600">⚠️ Overdue — Due ${fmtDate(file.dueDate)}, held by ${file.heldBy}</div>` : ''}
@@ -211,7 +249,14 @@ const FileFormModule = (() => {
                   <h4 style="margin:0;font-size:1rem;color:var(--gray-900);font-weight:700">All Files in Register ${file.fileNumber}</h4>
                   <span style="font-size:0.8rem;color:var(--gray-500)">Manage individual documents & files stored inside this master folder/register</span>
                 </div>
-                <button class="btn btn-primary btn-sm" id="btn-add-reg-file">➕ Add File to Register</button>
+                <div style="display:flex;gap:8px;align-items:center;">
+                  ${(canDelete && regFiles.length > 0) ? `
+                    <button class="btn btn-secondary btn-sm" id="btn-clean-reg-files" style="color:var(--danger);border-color:#fca5a5;background:#fff5f5;display:inline-flex;align-items:center;gap:6px;font-weight:600;" title="Mark all files in this register as deleted">
+                      🧹 Empty Register (${regFiles.length})
+                    </button>
+                  ` : ''}
+                  ${canCreate ? '<button class="btn btn-primary btn-sm" id="btn-add-reg-file">➕ Add File to Register</button>' : ''}
+                </div>
               </div>
               ${filesTableHTML}
             </div>

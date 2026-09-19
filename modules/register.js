@@ -11,9 +11,10 @@ const RegisterModule = (() => {
   let debounceTimer;
 
   function render(container, topbarActions) {
+    const canCreate = App.can ? App.can('register.create') : true;
     topbarActions.innerHTML = `
       <button class="btn btn-secondary btn-sm no-print" id="btn-export-csv">📥 Export CSV</button>
-      <a href="#add" class="btn btn-primary btn-sm no-print">➕ Add File</a>`;
+      ${canCreate ? '<a href="#add" class="btn btn-primary btn-sm no-print">➕ Add File</a>' : ''}`;
 
     loadConfig().then(() => {
       container.innerHTML = buildShell();
@@ -143,12 +144,13 @@ const RegisterModule = (() => {
       <div id="reg-table-wrap">
         <div class="page-loading"><div class="spinner"></div></div>
       </div>
+      ${(App.can ? App.can('register.bulk') : true) ? `
       <div class="bulk-actions-toolbar" id="reg-bulk-toolbar">
         <span class="bulk-toolbar-count" id="reg-bulk-count">0 files selected</span>
         <button type="button" class="btn-bulk-action btn-bulk-update" id="btn-bulk-update-action" title="Change Location, Category, Bin, Status, Held By for selected files">⚡ Bulk Update</button>
         <button type="button" class="btn-bulk-action btn-bulk-print" id="btn-bulk-print-action" title="Mark selected files for sticker printing">🏷️ Add to Print</button>
         <button type="button" class="btn-bulk-action btn-bulk-clear" id="btn-bulk-clear-action" title="Clear current selection">✕ Deselect</button>
-      </div>`;
+      </div>` : ''}`;
   }
 
   function filterPill(label, id, options, value, defaultLabel = 'All') {
@@ -433,14 +435,21 @@ const RegisterModule = (() => {
     if (!files.length) {
       return `<div class="table-empty"><div class="empty-icon">📭</div><p>No files found. <a href="#add">Add the first file →</a></p></div>`;
     }
+    const canEdit = App.can ? App.can('register.edit') : true;
+    const canDelete = App.can ? App.can('register.delete') : true;
+    const canCheckout = App.can ? App.can('checkout.manage') : true;
+    const canSticker = App.can ? App.can('stickers.print') : true;
+    const canBulk = App.can ? App.can('register.bulk') : true;
+
     const rows = files.map(f => {
       const overdue = f.status === 'Checked out' && f.dueDate && new Date(f.dueDate) < new Date();
       const isSelected = state.selectedFiles && state.selectedFiles.has(f.fileNumber);
       return `
         <tr class="${isSelected ? 'row-selected' : ''}" data-fn="${escapeHTML(f.fileNumber)}">
+          ${canBulk ? `
           <td class="col-cb">
             <input type="checkbox" class="reg-row-cb" data-fn="${escapeHTML(f.fileNumber)}" ${isSelected ? 'checked' : ''} aria-label="Select file ${escapeHTML(f.fileNumber)}">
-          </td>
+          </td>` : ''}
           <td class="col-file-num"><a href="#file/${encodeURIComponent(f.fileNumber)}">${f.fileNumber}</a></td>
           <td>${f.clientName || '—'}</td>
           <td>${f.category || '—'}</td>
@@ -451,26 +460,26 @@ const RegisterModule = (() => {
             </a>
           </td>
           <td style="max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${f.details}">${f.details || '—'}</td>
-          <td class="col-location-cell" data-action="quick-update" data-fn="${f.fileNumber}" style="cursor:pointer;" title="Click to change location">
-            ${f.location || '—'} <span class="quick-edit-hint">✏️</span>
+          <td class="${canEdit ? 'col-location-cell' : ''}" ${canEdit ? `data-action="quick-update" data-fn="${f.fileNumber}" style="cursor:pointer;" title="Click to change location"` : ''}>
+            ${f.location || '—'} ${canEdit ? '<span class="quick-edit-hint">✏️</span>' : ''}
           </td>
-          <td class="col-bin-cell" data-action="quick-update" data-fn="${f.fileNumber}" style="font-family:monospace;font-size:.8rem;cursor:pointer;" title="Click to change bin location">
-            ${f.binLocation || '—'} <span class="quick-edit-hint">✏️</span>
+          <td class="${canEdit ? 'col-bin-cell' : ''}" ${canEdit ? `data-action="quick-update" data-fn="${f.fileNumber}" style="font-family:monospace;font-size:.8rem;cursor:pointer;" title="Click to change bin location"` : 'style="font-family:monospace;font-size:.8rem;"'}>
+            ${f.binLocation || '—'} ${canEdit ? '<span class="quick-edit-hint">✏️</span>' : ''}
           </td>
-          <td class="col-status-cell" data-action="quick-update" data-fn="${f.fileNumber}" style="cursor:pointer;" title="Click to quickly change status or location">
-            ${statusBadge(f.status)} <span class="quick-edit-hint">⚡</span>
+          <td class="${canEdit ? 'col-status-cell' : ''}" ${canEdit ? `data-action="quick-update" data-fn="${f.fileNumber}" style="cursor:pointer;" title="Click to quickly change status or location"` : ''}>
+            ${statusBadge(f.status)} ${canEdit ? '<span class="quick-edit-hint">⚡</span>' : ''}
           </td>
           <td>${f.heldBy ? `<span title="Due: ${fmtDate(f.dueDate)}">${f.heldBy}${overdue ? ' ⚠️' : ''}</span>` : '—'}</td>
           <td>
             <div class="col-actions">
               <button class="btn btn-ghost btn-icon btn-sm" data-action="view" data-fn="${f.fileNumber}" title="View Details">👁</button>
-              <button class="btn btn-sm btn-icon" data-action="quick-update" data-fn="${f.fileNumber}" title="⚡ Change Status, Location & Bin" style="color:#b06000;background:#fef7e0;border:1px solid #feefc3;font-weight:bold;">⚡</button>
-              <button class="btn btn-ghost btn-icon btn-sm" data-action="edit" data-fn="${f.fileNumber}" title="Full Edit">✏️</button>
-              <button class="btn btn-ghost btn-icon btn-sm" data-action="${f.status === 'Checked out' ? 'return' : 'checkout'}" data-fn="${f.fileNumber}" title="${f.status === 'Checked out' ? 'Return' : 'Check Out'}">
+              ${canEdit ? `<button class="btn btn-sm btn-icon" data-action="quick-update" data-fn="${f.fileNumber}" title="⚡ Change Status, Location & Bin" style="color:#b06000;background:#fef7e0;border:1px solid #feefc3;font-weight:bold;">⚡</button>` : ''}
+              ${canEdit ? `<button class="btn btn-ghost btn-icon btn-sm" data-action="edit" data-fn="${f.fileNumber}" title="Full Edit">✏️</button>` : ''}
+              ${canCheckout ? `<button class="btn btn-ghost btn-icon btn-sm" data-action="${f.status === 'Checked out' ? 'return' : 'checkout'}" data-fn="${f.fileNumber}" title="${f.status === 'Checked out' ? 'Return' : 'Check Out'}">
                 ${f.status === 'Checked out' ? '↩️' : '📤'}
-              </button>
-              <button class="btn btn-ghost btn-icon btn-sm" data-action="sticker" data-fn="${f.fileNumber}" title="Print Sticker">🏷️</button>
-              <button class="btn btn-ghost btn-icon btn-sm" data-action="delete" data-fn="${f.fileNumber}" title="Delete" style="color:var(--danger)">🗑️</button>
+              </button>` : ''}
+              ${canSticker ? `<button class="btn btn-ghost btn-icon btn-sm" data-action="sticker" data-fn="${f.fileNumber}" title="Print Sticker">🏷️</button>` : ''}
+              ${canDelete ? `<button class="btn btn-ghost btn-icon btn-sm" data-action="delete" data-fn="${f.fileNumber}" title="Delete" style="color:var(--danger)">🗑️</button>` : ''}
             </div>
           </td>
         </tr>`;
@@ -480,7 +489,7 @@ const RegisterModule = (() => {
       <div class="table-wrap">
         <table>
           <thead><tr>
-            <th class="col-cb"><input type="checkbox" id="reg-select-all" title="Select all on this page"></th>
+            ${canBulk ? '<th class="col-cb"><input type="checkbox" id="reg-select-all" title="Select all on this page"></th>' : ''}
             <th>File Number</th><th>Client</th><th>Category</th>
             <th>Sub-Category</th><th>Files</th><th>Details</th><th>Location</th>
             <th>Bin</th><th>Status</th><th>Held By</th><th>Actions</th>
