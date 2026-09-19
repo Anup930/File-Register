@@ -6,7 +6,7 @@
 // ── CONFIGURATION ────────────────────────────────────────────
 // IMPORTANT: After deploying Code.gs as a Web App, paste the
 // URL here and reload the page.
-const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxXS-f5GRNtgwe73OCwVI-Db8_O2YonL4J7_dRFqNSorSdsngNVsodIg8S_oklB7ti2sw/exec';
+const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxTpD4rJPS24Y8Luk9TiFz1jVR5suP9QaPGA5vus0Xs1n36r84rdiTsrSaDx09CtgII/exec';
 
 // ── STATE ─────────────────────────────────────────────────────
 const App = {
@@ -30,7 +30,7 @@ function initUser() {
   const sessionStr = localStorage.getItem('fr_user_session');
   let session = null;
   if (sessionStr) {
-    try { session = JSON.parse(sessionStr); } catch(e) {}
+    try { session = JSON.parse(sessionStr); } catch (e) { }
   }
 
   if (!session || !session.username) {
@@ -47,14 +47,14 @@ function showLoginScreen() {
   if (!modal) return;
   modal.style.display = 'flex';
 
-  const form      = document.getElementById('login-form');
-  const uInput    = document.getElementById('login-username');
-  const pInput    = document.getElementById('login-password');
+  const form = document.getElementById('login-form');
+  const uInput = document.getElementById('login-username');
+  const pInput = document.getElementById('login-password');
   const btnSubmit = document.getElementById('login-submit-btn');
-  const alertEl   = document.getElementById('login-error-alert');
-  const eyeBtn    = document.getElementById('btn-toggle-pwd');
-  const txtSpan   = btnSubmit?.querySelector('.btn-login-text');
-  const spinSpan  = btnSubmit?.querySelector('.btn-login-spinner');
+  const alertEl = document.getElementById('login-error-alert');
+  const eyeBtn = document.getElementById('btn-toggle-pwd');
+  const txtSpan = btnSubmit?.querySelector('.btn-login-text');
+  const spinSpan = btnSubmit?.querySelector('.btn-login-spinner');
 
   if (alertEl) { alertEl.style.display = 'none'; alertEl.textContent = ''; }
   if (uInput) {
@@ -234,7 +234,7 @@ function openChangePasswordModal() {
       });
       closeModal();
       toast('Password changed successfully!', 'success');
-    } catch(err) {
+    } catch (err) {
       submitBtn.disabled = false;
       submitBtn.textContent = 'Update Password';
       errEl.textContent = err.message || 'Failed to update password.';
@@ -262,6 +262,32 @@ function updateUserUI() {
     roleEl.style.color = role === 'Admin' ? '#b06000' : 'var(--primary)';
   }
 
+  // Dynamic Navigation Visibility based on permissions
+  const navAdd = document.querySelector('a[data-page="add"]');
+  if (navAdd) navAdd.style.display = App.can('register.create') ? 'flex' : 'none';
+
+  const navStickers = document.querySelector('a[data-page="stickers"]');
+  if (navStickers) navStickers.style.display = App.can('stickers.print') ? 'flex' : 'none';
+
+  const navImport = document.querySelector('a[data-page="import"]');
+  if (navImport) navImport.style.display = App.can('import.execute') ? 'flex' : 'none';
+
+  const navSettingsGroup = document.getElementById('nav-settings-group');
+  if (navSettingsGroup) {
+    const canSettings = App.can('masters.manage') || App.can('users.manage') || role === 'Admin';
+    navSettingsGroup.style.display = canSettings ? 'block' : 'none';
+  }
+
+  const navUsersLink = document.getElementById('nav-link-users') || document.querySelector('a[data-page="settings/users"]');
+  if (navUsersLink) {
+    navUsersLink.style.display = (App.can('users.manage') || role === 'Admin') ? 'flex' : 'none';
+  }
+
+  const navAdminSection = document.getElementById('nav-admin-section');
+  if (navAdminSection) {
+    navAdminSection.style.display = (role === 'Admin') ? 'block' : 'none';
+  }
+
   // Bind change password and logout
   const newChangeBtn = changePwdBtn?.cloneNode(true);
   if (changePwdBtn && newChangeBtn) {
@@ -275,6 +301,74 @@ function updateUserUI() {
     newLogoutBtn.addEventListener('click', logout);
   }
 }
+
+// ── DYNAMIC PERMISSIONS ENGINE ─────────────────────────────────
+App.can = function (permissionKey) {
+  const u = App.currentUser;
+  if (!u) return false;
+  if (u.role === 'Admin') return true;
+  const perms = u.permissions || App.getDefaultPermissionsForRole(u.role);
+  if (perms.includes('*') || perms.includes(permissionKey)) return true;
+  return false;
+};
+
+App.getDefaultPermissionsForRole = function (role) {
+  role = String(role || 'Staff').trim().toLowerCase();
+  if (role === 'admin') return ['*'];
+  if (role === 'viewer') return ['register.view'];
+  return ['register.view', 'register.create', 'register.edit', 'register.bulk', 'checkout.manage', 'stickers.print'];
+};
+
+App.getAvailablePermissions = function () {
+  return [
+    {
+      group: 'File Register',
+      icon: '📁',
+      items: [
+        { key: 'register.view', label: 'View Registers', desc: 'Search, filter, and view registers & files inside' },
+        { key: 'register.create', label: 'Create Registers & Files', desc: 'Create new master registers and add files to registers' },
+        { key: 'register.edit', label: 'Edit Register Details', desc: 'Update status, physical location, bin number, and details' },
+        { key: 'register.delete', label: 'Delete & Empty Register', desc: 'Delete individual files and perform Empty Register purge' },
+        { key: 'register.bulk', label: 'Bulk Selection & Update', desc: 'Select multiple files and apply bulk status/location updates' }
+      ]
+    },
+    {
+      group: 'File Movement',
+      icon: '🔄',
+      items: [
+        { key: 'checkout.manage', label: 'Checkout & Return Files', desc: 'Handover files to persons/departments and log file returns' }
+      ]
+    },
+    {
+      group: 'Sticker Printing',
+      icon: '🏷️',
+      items: [
+        { key: 'stickers.print', label: 'Print Stickers & Labels', desc: 'Generate barcodes, print spine/cover stickers, and view print history' }
+      ]
+    },
+    {
+      group: 'Bulk Import',
+      icon: '📥',
+      items: [
+        { key: 'import.execute', label: 'Bulk CSV Import', desc: 'Import master registers and bulk records via CSV' }
+      ]
+    },
+    {
+      group: 'Master Configurations',
+      icon: '⚙️',
+      items: [
+        { key: 'masters.manage', label: 'Manage Masters & Lists', desc: 'Create and modify Clients, Categories, Subcategories & Lists' }
+      ]
+    },
+    {
+      group: 'User Administration',
+      icon: '👥',
+      items: [
+        { key: 'users.manage', label: 'User Accounts & Access', desc: 'Create, modify user credentials, roles, and granular permissions' }
+      ]
+    }
+  ];
+};
 
 // ── ROUTER ────────────────────────────────────────────────────
 function initRouter() {
@@ -293,16 +387,16 @@ function navigate(hash) {
 
   const titles = {
     dashboard: 'Dashboard',
-    register:  'File Register',
-    add:       'Add New File',
-    stickers:  'Print Stickers',
-    import:    'Bulk Import',
-    settings:  'Settings — Master Data',
-    'settings/clients':       'Settings — Clients',
-    'settings/categories':    'Settings — Categories',
+    register: 'File Register',
+    add: 'Add New File',
+    stickers: 'Print Stickers',
+    import: 'Bulk Import',
+    settings: 'Settings — Master Data',
+    'settings/clients': 'Settings — Clients',
+    'settings/categories': 'Settings — Categories',
     'settings/subcategories': 'Settings — Sub-Categories',
-    'settings/lists':         'Settings — Drop-down Lists',
-    'settings/users':         'Settings — Users & Access',
+    'settings/lists': 'Settings — Drop-down Lists',
+    'settings/users': 'Settings — Users & Access',
   };
 
   const topbarTitle = document.getElementById('topbar-title');
@@ -315,12 +409,12 @@ function navigate(hash) {
   content.innerHTML = '<div class="page-loading"><div class="spinner"></div><span>Loading…</span></div>';
 
   switch (page) {
-    case 'dashboard':     DashboardModule.render(content, topbarActions); break;
-    case 'register':      RegisterModule.render(content, topbarActions); break;
-    case 'add':           FileFormModule.renderAdd(content, topbarActions); break;
-    case 'stickers':      StickerModule.renderPrintPage(content, topbarActions); break;
-    case 'import':        ImportModule.render(content, topbarActions); break;
-    case 'settings':      MastersModule.render(content, topbarActions, 'clients'); break;
+    case 'dashboard': DashboardModule.render(content, topbarActions); break;
+    case 'register': RegisterModule.render(content, topbarActions); break;
+    case 'add': FileFormModule.renderAdd(content, topbarActions); break;
+    case 'stickers': StickerModule.renderPrintPage(content, topbarActions); break;
+    case 'import': ImportModule.render(content, topbarActions); break;
+    case 'settings': MastersModule.render(content, topbarActions, 'clients'); break;
     default:
       if (page.startsWith('settings/')) {
         const subtab = page.replace('settings/', '');
@@ -370,7 +464,7 @@ function initSidebar() {
 function loadConfig(force = false) {
   if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') {
     // Demo mode with empty config
-    App.config = { clients: [], categories: [], subcategories: [], lists: { 'Locations': ['Mumbai','Pune','Kolkata'], 'File Types': ['Flat File','Cover File','Box File'], 'Status (fixed)': ['In office','Checked out','Archived','Missing'], 'Business Verticals': [], 'HODs': [], 'Entities': [], 'Colours': [], 'Bin Locations': [] } };
+    App.config = { clients: [], categories: [], subcategories: [], lists: { 'Locations': ['Mumbai', 'Pune', 'Kolkata'], 'File Types': ['Flat File', 'Cover File', 'Box File'], 'Status (fixed)': ['In office', 'Checked out', 'Archived', 'Missing'], 'Business Verticals': [], 'HODs': [], 'Entities': [], 'Colours': [], 'Bin Locations': [] } };
     return Promise.resolve(App.config);
   }
   if (!force && App._configLoading) return App._configLoading;
@@ -435,7 +529,21 @@ function openModal({ title, body, footer, size = '' }) {
   document.body.appendChild(overlay);
   overlay.addEventListener('click', e => { if (e.target === overlay) closeModal(); });
   document.getElementById('modal-close-btn').addEventListener('click', closeModal);
-  setTimeout(() => document.querySelector('#active-modal')?.querySelector('input,select,textarea')?.focus(), 50);
+
+  const modalBody = document.getElementById('modal-body');
+  if (modalBody) modalBody.scrollTop = 0;
+
+  setTimeout(() => {
+    const firstInput = document.querySelector('#active-modal')?.querySelector('input:not([disabled]),select:not([disabled]),textarea:not([disabled])');
+    if (firstInput) {
+      try {
+        firstInput.focus({ preventScroll: true });
+      } catch(e) {
+        firstInput.focus();
+      }
+    }
+    if (modalBody) modalBody.scrollTop = 0;
+  }, 50);
   return overlay;
 }
 
@@ -505,15 +613,15 @@ function promptDialog(title, label, onSubmit, options = {}) {
       input1.focus();
       return;
     }
-    
+
     const btnOk = overlay.querySelector('#prompt-ok');
     const btnCancel = overlay.querySelector('#prompt-cancel');
     const origText = btnOk.textContent;
-    
+
     btnOk.disabled = true;
     btnCancel.disabled = true;
     btnOk.innerHTML = '<div class="spinner" style="width:14px;height:14px;border-width:2px;margin-right:6px"></div> Adding...';
-    
+
     try {
       await Promise.resolve(onSubmit(val1, input2 ? input2.value.trim() : ''));
       btnOk.innerHTML = '✓ Added';
@@ -541,10 +649,10 @@ function promptDialog(title, label, onSubmit, options = {}) {
 // ── DOM HELPERS ───────────────────────────────────────────────
 function statusBadge(status) {
   const map = {
-    'In office':   'badge-inoffice',
+    'In office': 'badge-inoffice',
     'Checked out': 'badge-checkedout',
-    'Archived':    'badge-archived',
-    'Missing':     'badge-missing',
+    'Archived': 'badge-archived',
+    'Missing': 'badge-missing',
   };
   const cls = map[status] || 'badge-archived';
   const dot = { 'In office': '●', 'Checked out': '◉', 'Archived': '○', 'Missing': '✕' }[status] || '●';
@@ -586,7 +694,7 @@ function escapeHTML(str) {
 }
 
 // ── REUSABLE SEARCHABLE FILTER COMPONENT ────────────────────────
-App.renderFilterPill = function(label, id, options, currentValue, defaultLabel = 'All') {
+App.renderFilterPill = function (label, id, options, currentValue, defaultLabel = 'All') {
   const curOpt = options.find(o => String(o.value) === String(currentValue)) || options[0] || { value: '', text: defaultLabel };
   const displayText = curOpt ? curOpt.text : defaultLabel;
   const isActive = !!currentValue;
@@ -612,14 +720,14 @@ App.renderFilterPill = function(label, id, options, currentValue, defaultLabel =
     </div>`;
 };
 
-App.bindFilterPill = function(id, options, onSelect) {
-  const wrap      = document.getElementById(`wrap-${id}`);
-  const pill      = document.getElementById(`pill-${id}`);
-  const popover   = document.getElementById(`popover-${id}`);
+App.bindFilterPill = function (id, options, onSelect) {
+  const wrap = document.getElementById(`wrap-${id}`);
+  const pill = document.getElementById(`pill-${id}`);
+  const popover = document.getElementById(`popover-${id}`);
   const searchInp = document.getElementById(`search-${id}`);
-  const clearBtn  = document.getElementById(`clear-${id}`);
-  const listEl    = document.getElementById(`list-${id}`);
-  const lblEl     = document.getElementById(`lbl-${id}`);
+  const clearBtn = document.getElementById(`clear-${id}`);
+  const listEl = document.getElementById(`list-${id}`);
+  const lblEl = document.getElementById(`lbl-${id}`);
   const hiddenSel = document.getElementById(id);
 
   if (!pill || !popover || !listEl) return;
@@ -1047,9 +1155,9 @@ function renderSmartSelect({ id, options, value, placeholder, onAdd, allowCustom
 
 // ── CSV EXPORT ────────────────────────────────────────────────
 function exportToCSV(files, filename = 'file-register.csv') {
-  const headers = ['File Number','Old File Number','Client Name','Category','Sub-Category','Details','Entity','Business Vertical','Location','HOD','File Type','Colour','Bin Location','Status','Held By','Due Date','Tags','Related Docs','Notes','Created At','Created By','Updated At','Updated By'];
-  const keys    = ['fileNumber','oldFileNumber','clientName','category','subCategory','details','entity','businessVertical','location','hod','fileType','colour','binLocation','status','heldBy','dueDate','tags','relatedDocs','notes','createdAt','createdBy','updatedAt','updatedBy'];
-  const rows = [headers, ...files.map(f => keys.map(k => `"${String(f[k] || '').replace(/"/g, '""')}"` ))];
+  const headers = ['File Number', 'Old File Number', 'Client Name', 'Category', 'Sub-Category', 'Details', 'Entity', 'Business Vertical', 'Location', 'HOD', 'File Type', 'Colour', 'Bin Location', 'Status', 'Held By', 'Due Date', 'Tags', 'Related Docs', 'Notes', 'Created At', 'Created By', 'Updated At', 'Updated By'];
+  const keys = ['fileNumber', 'oldFileNumber', 'clientName', 'category', 'subCategory', 'details', 'entity', 'businessVertical', 'location', 'hod', 'fileType', 'colour', 'binLocation', 'status', 'heldBy', 'dueDate', 'tags', 'relatedDocs', 'notes', 'createdAt', 'createdBy', 'updatedAt', 'updatedBy'];
+  const rows = [headers, ...files.map(f => keys.map(k => `"${String(f[k] || '').replace(/"/g, '""')}"`))];
   const csv = rows.map(r => r.join(',')).join('\n');
   const blob = new Blob([csv], { type: 'text/csv' });
   const a = document.createElement('a');

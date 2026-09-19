@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Access & Permissions Guide — Gretex File Master</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --primary: #1a73e8;
+      --primary-dark: #1557b0;
+      --primary-light: #e8f0fe;
+      --success: #1e8e3e;
+      --success-light: #e6f4ea;
+      --warning: #f9ab00;
+      --warning-light: #fef7e0;
+      --danger: #d93025;
+      --danger-light: #fce8e6;
+      --gray-50: #f8fafc;
+      --gray-100: #f1f5f9;
+      --gray-200: #e2e8f0;
+      --gray-300: #cbd5e1;
+      --gray-500: #64748b;
+      --gray-700: #334155;
+      --gray-800: #1e293b;
+      --gray-900: #0f172a;
+      --radius: 10px;
+      --shadow: 0 4px 6px -1px rgba(0,0,0,0.07), 0 2px 4px -2px rgba(0,0,0,0.05);
+      --shadow-lg: 0 10px 15px -3px rgba(0,0,0,0.08), 0 4px 6px -4px rgba(0,0,0,0.04);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Inter', system-ui, -apple-system, sans-serif;
+      background: var(--gray-50);
+      color: var(--gray-800);
+      line-height: 1.6;
+      padding-bottom: 60px;
+    }
+
+    .guide-header {
+      background: #ffffff;
+      border-bottom: 1px solid var(--gray-200);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      box-shadow: var(--shadow);
+    }
+    .header-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 16px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .brand-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+    .brand-icon {
+      width: 42px;
+      height: 42px;
+      background: linear-gradient(135deg, #1a73e8, #0d47a1);
+      color: white;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.4rem;
+      box-shadow: 0 2px 8px rgba(26,115,232,0.3);
+    }
+    .brand-title {
+      font-size: 1.15rem;
+      font-weight: 800;
+      color: var(--gray-900);
+    }
+    .brand-sub {
+      font-size: 0.78rem;
+      color: var(--gray-500);
+      font-weight: 500;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      border-radius: 7px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      text-decoration: none;
+      border: 1px solid transparent;
+      cursor: pointer;
+      transition: all 0.15s ease;
+    }
+    .btn-secondary {
+      background: #ffffff;
+      border-color: var(--gray-300);
+      color: var(--gray-700);
+    }
+    .btn-secondary:hover {
+      background: var(--gray-100);
+      border-color: var(--gray-400);
+    }
+    .btn-primary {
+      background: var(--primary);
+      color: white;
+    }
+    .btn-primary:hover {
+      background: var(--primary-dark);
+    }
+
+    .container {
+      max-width: 1200px;
+      margin: 32px auto 0;
+      padding: 0 24px;
+    }
+
+    /* Hero Banner */
+    .hero-card {
+      background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+      color: white;
+      border-radius: 16px;
+      padding: 36px 32px;
+      margin-bottom: 32px;
+      position: relative;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+    }
+    .hero-card::after {
+      content: '🛡️';
+      position: absolute;
+      right: 24px;
+      bottom: -15px;
+      font-size: 9rem;
+      opacity: 0.08;
+      pointer-events: none;
+    }
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(254, 247, 224, 0.15);
+      color: #fef08a;
+      border: 1px solid rgba(254, 240, 138, 0.3);
+      font-size: 0.75rem;
+      font-weight: 700;
+      padding: 4px 12px;
+      border-radius: 20px;
+      margin-bottom: 12px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    .hero-title {
+      font-size: 1.8rem;
+      font-weight: 800;
+      margin-bottom: 8px;
+    }
+    .hero-desc {
+      font-size: 0.95rem;
+      color: #cbd5e1;
+      max-width: 780px;
+      line-height: 1.6;
+    }
+
+    /* Section Cards */
+    .section-block {
+      background: white;
+      border: 1px solid var(--gray-200);
+      border-radius: 14px;
+      padding: 28px;
+      margin-bottom: 28px;
+      box-shadow: var(--shadow);
+    }
+    .section-title-wrap {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 14px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    .section-icon {
+      font-size: 1.5rem;
+    }
+    .section-title {
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--gray-900);
+    }
+    .section-subtitle {
+      font-size: 0.85rem;
+      color: var(--gray-500);
+    }
+
+    /* Roles Grid */
+    .roles-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+      gap: 20px;
+      margin-top: 16px;
+    }
+    .role-card {
+      border: 1px solid var(--gray-200);
+      border-radius: 12px;
+      padding: 22px;
+      background: var(--gray-50);
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      transition: all 0.2s ease;
+    }
+    .role-card:hover {
+      transform: translateY(-2px);
+      box-shadow: var(--shadow);
+      background: white;
+    }
+    .role-card.admin-border { border-top: 4px solid #b06000; }
+    .role-card.staff-border { border-top: 4px solid var(--primary); }
+    .role-card.viewer-border { border-top: 4px solid var(--success); }
+
+    .role-card-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 12px;
+    }
+    .role-name {
+      font-size: 1.15rem;
+      font-weight: 700;
+      color: var(--gray-900);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .role-badge {
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 3px 9px;
+      border-radius: 6px;
+    }
+    .badge-admin { background: #fef7e0; color: #b06000; border: 1px solid #feefc3; }
+    .badge-staff { background: var(--primary-light); color: var(--primary); border: 1px solid #c2e7ff; }
+    .badge-viewer { background: var(--success-light); color: var(--success); border: 1px solid #b7e1cd; }
+
+    .role-desc {
+      font-size: 0.85rem;
+      color: var(--gray-700);
+      margin-bottom: 16px;
+      min-height: 48px;
+    }
+    .role-caps-title {
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 700;
+      color: var(--gray-500);
+      margin-bottom: 8px;
+    }
+    .caps-list {
+      list-style: none;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      font-size: 0.82rem;
+    }
+    .caps-list li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+    }
+    .caps-list .check { color: var(--success); font-weight: bold; }
+    .caps-list .cross { color: var(--danger); font-weight: bold; }
+
+    /* Matrix Table */
+    .table-container {
+      overflow-x: auto;
+      border: 1px solid var(--gray-200);
+      border-radius: 10px;
+    }
+    .perm-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.85rem;
+      text-align: left;
+    }
+    .perm-table th {
+      background: var(--gray-100);
+      color: var(--gray-700);
+      font-weight: 700;
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--gray-200);
+      white-space: nowrap;
+    }
+    .perm-table td {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--gray-200);
+      vertical-align: middle;
+    }
+    .perm-table tr:last-child td {
+      border-bottom: none;
+    }
+    .perm-table tr:hover td {
+      background: #f8fafc;
+    }
+    .perm-key-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.78rem;
+      font-weight: 600;
+      background: var(--gray-100);
+      padding: 2px 7px;
+      border-radius: 5px;
+      border: 1px solid var(--gray-300);
+      color: #0f172a;
+      display: inline-block;
+    }
+    .status-check {
+      color: var(--success);
+      font-weight: 700;
+      font-size: 1rem;
+    }
+    .status-cross {
+      color: var(--gray-300);
+      font-size: 0.9rem;
+    }
+    .status-custom {
+      color: #b06000;
+      font-size: 0.75rem;
+      font-weight: 600;
+      background: #fef7e0;
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    /* Steps Layout */
+    .step-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 16px;
+      margin-top: 16px;
+    }
+    .step-card {
+      background: var(--gray-50);
+      border: 1px solid var(--gray-200);
+      border-radius: 10px;
+      padding: 20px;
+      position: relative;
+    }
+    .step-num {
+      width: 28px;
+      height: 28px;
+      background: var(--primary);
+      color: white;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.8rem;
+      font-weight: 700;
+      margin-bottom: 12px;
+    }
+    .step-title {
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--gray-900);
+      margin-bottom: 6px;
+    }
+    .step-desc {
+      font-size: 0.82rem;
+      color: var(--gray-600);
+      line-height: 1.5;
+    }
+
+    /* Notice Box */
+    .notice-box {
+      background: #eff6ff;
+      border: 1px solid #bfdbfe;
+      border-left: 4px solid var(--primary);
+      border-radius: 8px;
+      padding: 16px 20px;
+      margin-top: 20px;
+      font-size: 0.85rem;
+      color: #1e3a8a;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+    .notice-icon { font-size: 1.2rem; }
+
+    @media (max-width: 768px) {
+      .hero-title { font-size: 1.4rem; }
+      .roles-grid { grid-template-columns: 1fr; }
+      .header-inner { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+
+  <script>
+    // Client-side Admin Protection Guard
+    (function() {
+      try {
+        const sess = JSON.parse(localStorage.getItem('fr_user_session') || '{}');
+        if (!sess.username || sess.role !== 'Admin') {
+          document.body.innerHTML = `
+            <div style="min-height:100vh;display:flex;align-items:center;justify-content:center;background:#f8fafc;font-family:sans-serif;padding:20px;">
+              <div style="max-width:480px;width:100%;background:#ffffff;border:1px solid #fee2e2;border-radius:12px;padding:36px;text-align:center;box-shadow:0 10px 25px -5px rgba(0,0,0,0.05);">
+                <div style="font-size:3.5rem;margin-bottom:12px;">🚫</div>
+                <h2 style="color:#991b1b;margin:0 0 10px 0;font-size:1.4rem;font-weight:700;">Access Restricted</h2>
+                <p style="color:#64748b;font-size:0.9rem;line-height:1.6;margin-bottom:24px;">
+                  This <strong>Access & Permissions Guide</strong> is confidential and exclusively reserved for <strong>System Administrators</strong>.<br><br>
+                  Please log in with an Administrator account in the main application.
+                </p>
+                <a href="index.html#register" style="display:inline-block;background:#1a73e8;color:white;text-decoration:none;padding:10px 22px;border-radius:6px;font-weight:600;font-size:0.9rem;">← Return to Application</a>
+              </div>
+            </div>`;
+        }
+      } catch(e) {}
+    })();
+  </script>
+
+  <!-- Header -->
+  <header class="guide-header">
+    <div class="header-inner">
+      <div class="brand-wrap">
+        <div class="brand-icon">📁</div>
+        <div>
+          <div class="brand-title">Gretex File Master</div>
+          <div class="brand-sub">Physical File Register System · Admin Guide</div>
+        </div>
+      </div>
+      <div class="header-actions">
+        <a href="index.html#settings/users" class="btn btn-secondary">
+          <span>👤</span> Manage Users in App
+        </a>
+        <a href="index.html#register" class="btn btn-primary">
+          <span>←</span> Back to Main App
+        </a>
+      </div>
+    </div>
+  </header>
+
+  <main class="container">
+    <!-- Hero Card -->
+    <div class="hero-card">
+      <div class="hero-badge">🛡️ Administrator Confidential</div>
+      <h1 class="hero-title">Access Control & Profile Architecture</h1>
+      <p class="hero-desc">
+        Welcome to the Role-Based Access Control (RBAC) and Security Guide. As an Administrator, you have full control over what each user can see, create, modify, delete, and manage across the Gretex File Master system.
+      </p>
+    </div>
+
+    <!-- Section 1: Standard Profiles -->
+    <section class="section-block">
+      <div class="section-title-wrap">
+        <span class="section-icon">👥</span>
+        <div>
+          <h2 class="section-title">User Roles & Default Profiles</h2>
+          <div class="section-subtitle">Overview of built-in roles and their initial capability baselines</div>
+        </div>
+      </div>
+
+      <div class="roles-grid">
+        <!-- Admin Card -->
+        <div class="role-card admin-border">
+          <div class="role-card-header">
+            <div class="role-name"><span>👑</span> Admin</div>
+            <span class="role-badge badge-admin">Superuser</span>
+          </div>
+          <p class="role-desc">
+            Complete, unrestricted control over the entire system. Holds the global wildcard <code class="perm-key-badge">*</code> permission.
+          </p>
+          <div class="role-caps-title">Key Capabilities:</div>
+          <ul class="caps-list">
+            <li><span class="check">✓</span> All register and file operations (Add/Edit/Delete/Clean)</li>
+            <li><span class="check">✓</span> Manage Users, Reset Passwords & Customize Permissions</li>
+            <li><span class="check">✓</span> Manage Master Dropdowns (Clients, Categories, Bins)</li>
+            <li><span class="check">✓</span> Bulk Updates, Checkouts, CSV Imports & Sticker Printing</li>
+            <li><span class="check">✓</span> Exclusive access to this Admin Guide</li>
+          </ul>
+        </div>
+
+        <!-- Staff Card -->
+        <div class="role-card staff-border">
+          <div class="role-card-header">
+            <div class="role-name"><span>💼</span> Staff</div>
+            <span class="role-badge badge-staff">Operational</span>
+          </div>
+          <p class="role-desc">
+            Designed for regular office staff who actively register files, perform checkouts, print QR stickers, and update locations.
+          </p>
+          <div class="role-caps-title">Default Baseline:</div>
+          <ul class="caps-list">
+            <li><span class="check">✓</span> View & Search All Registers and Subfiles</li>
+            <li><span class="check">✓</span> Add new registers & add documents into registers</li>
+            <li><span class="check">✓</span> Edit file details & Quick Status/Location update</li>
+            <li><span class="check">✓</span> Multi-select & Bulk Update (Category, Bin, Status)</li>
+            <li><span class="check">✓</span> Check Out & Return Files, Print QR Stickers</li>
+            <li><span class="cross">✕</span> Delete Registers or Clean Subfiles <em>(Locked by default)</em></li>
+            <li><span class="cross">✕</span> Settings, Masters, and User Management</li>
+          </ul>
+        </div>
+
+        <!-- Viewer Card -->
+        <div class="role-card viewer-border">
+          <div class="role-card-header">
+            <div class="role-name"><span>👁️</span> Viewer</div>
+            <span class="role-badge badge-viewer">Read-Only</span>
+          </div>
+          <p class="role-desc">
+            Safe, audit-only read access for auditors, department heads, or external viewers who only need to locate files.
+          </p>
+          <div class="role-caps-title">Default Baseline:</div>
+          <ul class="caps-list">
+            <li><span class="check">✓</span> View Registers, Details, and Files inside</li>
+            <li><span class="check">✓</span> Search and Filter by client, status, old file number</li>
+            <li><span class="check">✓</span> Export search results to CSV</li>
+            <li><span class="cross">✕</span> Cannot Add, Edit, or Delete files</li>
+            <li><span class="cross">✕</span> Cannot Check Out or Return</li>
+            <li><span class="cross">✕</span> Cannot Print Stickers or Bulk Update</li>
+          </ul>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 2: Granular Permissions Matrix -->
+    <section class="section-block">
+      <div class="section-title-wrap">
+        <span class="section-icon">🔑</span>
+        <div>
+          <h2 class="section-title">Granular Permissions Catalog</h2>
+          <div class="section-subtitle">Every specific permission key, what it controls, and UI impact</div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <table class="perm-table">
+          <thead>
+            <tr>
+              <th>Module</th>
+              <th>Permission Key</th>
+              <th>Description & UI Controls</th>
+              <th style="text-align:center">Admin</th>
+              <th style="text-align:center">Staff</th>
+              <th style="text-align:center">Viewer</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr>
+              <td><strong>Register</strong></td>
+              <td><span class="perm-key-badge">register.view</span></td>
+              <td>Access register table, search bar, old file filter, and view file detail page</td>
+              <td align="center"><span class="status-check">✓</span></td>
+              <td align="center"><span class="status-check">✓</span></td>
+              <td align="center"><span class="status-check">✓</span></td>
+            </tr>
+            <tr>
+              <td><strong>Register</strong></td>
+              <td><span class="perm-key-badge">register.create</span></td>
+              <td>Displays <span style="font-weight:600;">➕ Add File</span> in topbar and <span style="font-weight:600;">➕ Add File to Register</span> in detail view</td>
+              <td align="center"><span class="status-check">✓</span></td>
+              <td align="center"><span class="status-check">✓</span></td>
+              <td align="center"><span class="status-cross">—</span></td>
+            </tr>
+            <tr>
+              <td><strong>Register</strong></td>
+              <td><span class="perm-key-badge">register.edit</span></td>
+              <td>Enables ⚡ Quick Status/Location update, inline table edits, and full Edit form</td>
+              <td align="center"><span class="status-check">✓</span></td>
+              <td align="center"><span class="status-check">✓</span></td>
+              <td align="center"><span class="status-cross">—</span></td>
+            </tr>
+            <tr>
+              <td><strong>Register</strong></td>
+              <td><span class="perm-key-badge">register.delete</span></td>
+              <td>Enables 🗑️ Delete Register button and 🧹 Empty Register (clean subfiles)</td>
+              <td align="center"><span class="status-check">✓</span></td>
+              <td align="center"><span class="status-custom">Configurable</span></td>
+              <td align="center"><span class="status-cross">—</span></td>
+            </tr>
+            <tr>
+              <td><strong>Register</strong></td>
+              <td><span class="perm-key-badge">register.bulk</span></td>
+              <td>Enables row selection checkboxes and floating <span style="font-weight:600;">⚡ Bulk Update</span> toolbar</td>
+              <td align="center"><span class="status-check">✓</span></td>
+              <td align="center"><span class="status-check">✓</span></td>
+              <td align="center"><span class="status-cross">—</span></td>
+            </tr>
+            <tr>
+              <td><strong>Operations</strong></td>
+              <td><span class="perm-key-badge">checkout.manage</span></td>
+              <td>Enables 📤 Check Out and ↩️ Return actions in table, details, and sidebar menu</td>
+              <td align="center"><span class="status-check">✓</span></td>
+              <td align="center"><span class="status-check">✓</span></td>
+              <td align="center"><span class="status-cross">—</span></td>
+            </tr>
+            <tr>
+              <td><strong>Operations</strong></td>
+              <td><span class="perm-key-badge">stickers.print</span></td>
+              <td>Enables 🏷️ Sticker generation, Add to Print Queue, and Print Stickers sidebar menu</td>
+              <td align="center"><span class="status-check">✓</span></td>
+              <td align="center"><span class="status-check">✓</span></td>
+              <td align="center"><span class="status-cross">—</span></td>
+            </tr>
+            <tr>
+              <td><strong>Data</strong></td>
+              <td><span class="perm-key-badge">import.execute</span></td>
+              <td>Enables Bulk CSV Import module in sidebar navigation to upload master files</td>
+              <td align="center"><span class="status-check">✓</span></td>
+              <td align="center"><span class="status-cross">—</span></td>
+              <td align="center"><span class="status-cross">—</span></td>
+            </tr>
+            <tr>
+              <td><strong>System</strong></td>
+              <td><span class="perm-key-badge">masters.manage</span></td>
+              <td>Enables Settings submenus for Clients, Categories, Sub-Categories, and Dropdown Lists</td>
+              <td align="center"><span class="status-check">✓</span></td>
+              <td align="center"><span class="status-cross">—</span></td>
+              <td align="center"><span class="status-cross">—</span></td>
+            </tr>
+            <tr>
+              <td><strong>System</strong></td>
+              <td><span class="perm-key-badge">users.manage</span></td>
+              <td>Enables User Management: create users, edit credentials, and modify permissions</td>
+              <td align="center"><span class="status-check">✓</span></td>
+              <td align="center"><span class="status-cross">—</span></td>
+              <td align="center"><span class="status-cross">—</span></td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+
+      <div class="notice-box">
+        <div class="notice-icon">💡</div>
+        <div>
+          <strong>Dynamic Granularity:</strong> Even if a user has the role of <em>Staff</em>, you can grant them additional privileges (like <code>register.delete</code> or <code>import.execute</code>) or remove privileges (like <code>register.bulk</code>) simply by toggling checkboxes in the User Edit dialog.
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 3: How to Setup & Configure -->
+    <section class="section-block">
+      <div class="section-title-wrap">
+        <span class="section-icon">⚙️</span>
+        <div>
+          <h2 class="section-title">How to Configure User Access (Step-by-Step)</h2>
+          <div class="section-subtitle">Admin workflow to create new users or customize existing accounts</div>
+        </div>
+      </div>
+
+      <div class="step-grid">
+        <div class="step-card">
+          <div class="step-num">1</div>
+          <div class="step-title">Open Users & Access</div>
+          <div class="step-desc">
+            From the sidebar navigation, expand <strong>Settings ⚙️</strong> and click on <strong>👤 Users & Access</strong>.
+          </div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">2</div>
+          <div class="step-title">Create or Edit User</div>
+          <div class="step-desc">
+            Click <strong>➕ Add User</strong> for new team members, or click <strong>✏️ Edit & Access</strong> next to an existing user in the table.
+          </div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">3</div>
+          <div class="step-title">Select Preset or Customize</div>
+          <div class="step-desc">
+            Use the Quick Preset buttons (<code>👑 Full Access</code>, <code>💼 Standard Staff</code>, <code>👁️ Read-Only</code>) to auto-fill recommended permissions, or check individual boxes.
+          </div>
+        </div>
+
+        <div class="step-card">
+          <div class="step-num">4</div>
+          <div class="step-title">Save & Instant Sync</div>
+          <div class="step-desc">
+            Click <strong>💾 Save Changes</strong>. Permissions are instantly written as JSON into Google Sheets and take effect on the user's next login or page refresh.
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- Section 4: Audit & Soft Deletion Policy -->
+    <section class="section-block">
+      <div class="section-title-wrap">
+        <span class="section-icon">📜</span>
+        <div>
+          <h2 class="section-title">Audit Trail & Soft Delete Policy</h2>
+          <div class="section-subtitle">How data integrity and complete traceability are maintained</div>
+        </div>
+      </div>
+
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:20px;">
+        <div style="background:var(--gray-50);padding:20px;border-radius:10px;border:1px solid var(--gray-200);">
+          <div style="font-weight:700;color:var(--gray-900);margin-bottom:8px;font-size:0.95rem;display:flex;align-items:center;gap:6px;">
+            <span>🧹</span> Soft Deletion Mechanism
+          </div>
+          <p style="font-size:0.83rem;color:var(--gray-600);line-height:1.6;">
+            When an authorized user deletes a subfile or uses <strong>🧹 Empty Register</strong>, the records are <em>not permanently erased</em> from your Google Sheet. Instead, Column L (<strong>DELETE</strong>) in the <code>Files</code> sheet is flagged as <code>Yes</code>. The application automatically filters these out from display while preserving the raw historical record in the spreadsheet.
+          </p>
+        </div>
+
+        <div style="background:var(--gray-50);padding:20px;border-radius:10px;border:1px solid var(--gray-200);">
+          <div style="font-weight:700;color:var(--gray-900);margin-bottom:8px;font-size:0.95rem;display:flex;align-items:center;gap:6px;">
+            <span>🛡️</span> Immutable Activity Audit Log
+          </div>
+          <p style="font-size:0.83rem;color:var(--gray-600);line-height:1.6;">
+            Every single state change—including user creation, permission adjustments, register additions, location quick-updates, checkouts, returns, and soft-deletes—is permanently appended to the <code>ActivityLog</code> sheet with the exact <strong>Actor</strong>, <strong>Action</strong>, <strong>Timestamp</strong>, and detailed description.
+          </p>
+        </div>
+      </div>
+    </section>
+  </main>
+
+</body>
+</html>
