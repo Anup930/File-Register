@@ -8,6 +8,7 @@
 // URL here and reload the page.
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxTpD4rJPS24Y8Luk9TiFz1jVR5suP9QaPGA5vus0Xs1n36r84rdiTsrSaDx09CtgII/exec';
 
+
 // ── STATE ─────────────────────────────────────────────────────
 const App = {
   user: null,
@@ -38,6 +39,13 @@ function initUser() {
   } else {
     App.currentUser = session;
     App.user = session.fullName || session.username;
+    if (typeof CryptoStore !== 'undefined') {
+      CryptoStore.init(session).then(() => {
+        if (typeof AppDataStore !== 'undefined') {
+          AppDataStore.ensureLoaded().catch(() => { });
+        }
+      });
+    }
     updateUserUI();
   }
 }
@@ -114,6 +122,12 @@ function showLoginScreen() {
         // Success
         App.currentUser = result;
         App.user = result.fullName || result.username;
+        if (typeof CryptoStore !== 'undefined') {
+          await CryptoStore.init(result);
+          if (typeof AppDataStore !== 'undefined') {
+            AppDataStore.ensureLoaded().catch(() => { });
+          }
+        }
         localStorage.setItem('fr_user_session', JSON.stringify(result));
         localStorage.setItem('fr_user_name', App.user);
 
@@ -150,6 +164,15 @@ function logout() {
     'Sign Out',
     'Are you sure you want to sign out from File Register?',
     () => {
+      if (typeof CryptoStore !== 'undefined') {
+        CryptoStore.wipeAll();
+      }
+      if (typeof AppCache !== 'undefined' && AppCache.clearAll) {
+        AppCache.clearAll();
+      }
+      if (typeof AppDataStore !== 'undefined' && AppDataStore.clear) {
+        AppDataStore.clear();
+      }
       localStorage.removeItem('fr_user_session');
       localStorage.removeItem('fr_user_name');
       App.user = null;
@@ -460,44 +483,460 @@ function initSidebar() {
   });
 }
 
-// ── CONFIG LOADER ─────────────────────────────────────────────
+// ── SMART USER-SCOPED CACHE SYSTEM ────────────────────────────
+const AppCache = (() => {
+  const memoryCache = new Map();
+  const inflightRequests = new Map();
+
+  function getUserPrefix() {
+    const user = (App.currentUser && App.currentUser.username) ? App.currentUser.username : (localStorage.getItem('fr_user_name') || 'guest');
+    const role = (App.currentUser && App.currentUser.role) ? App.currentUser.role : 'user';
+    return `fr_c_${user}_${role}_`;
+  }
+
+  function get(key, storage = 'auto') {
+    const prefixedKey = getUserPrefix() + key;
+    const now = Date.now();
+
+    // 1. Check memory cache first (instant 0ms)
+    if (memoryCache.has(prefixedKey)) {
+      const entry = memoryCache.get(prefixedKey);
+      if (entry.expiresAt > now) {
+        return entry.data;
+      }
+      memoryCache.delete(prefixedKey);
+    }
+
+    // 2. Check sessionStorage
+    if (storage === 'auto' || storage === 'session') {
+      try {
+        const item = sessionStorage.getItem(prefixedKey);
+        if (item) {
+          const entry = JSON.parse(item);
+          if (entry.expiresAt > now) {
+            memoryCache.set(prefixedKey, entry);
+            return entry.data;
+          }
+          sessionStorage.removeItem(prefixedKey);
+        }
+      } catch (e) { }
+    }
+
+    // 3. Check localStorage
+    if (storage === 'auto' || storage === 'local') {
+      try {
+        const item = localStorage.getItem(prefixedKey);
+        if (item) {
+          const entry = JSON.parse(item);
+          if (entry.expiresAt > now) {
+            memoryCache.set(prefixedKey, entry);
+            return entry.data;
+          }
+          localStorage.removeItem(prefixedKey);
+        }
+      } catch (e) { }
+    }
+
+    return null;
+  }
+
+  function set(key, data, ttlMs = 120000, storage = 'session') {
+    const prefixedKey = getUserPrefix() + key;
+    const now = Date.now();
+    const entry = {
+      data,
+      timestamp: now,
+      expiresAt: now + ttlMs,
+      user: (App.currentUser && App.currentUser.username) || 'guest'
+    };
+
+    memoryCache.set(prefixedKey, entry);
+
+    if (storage === 'session') {
+      try { sessionStorage.setItem(prefixedKey, JSON.stringify(entry)); } catch (e) { }
+    } else if (storage === 'local') {
+      try { localStorage.setItem(prefixedKey, JSON.stringify(entry)); } catch (e) { }
+    }
+    return data;
+  }
+
+  function invalidate(pattern) {
+    const prefix = getUserPrefix();
+    // Invalidate memory
+    for (const k of Array.from(memoryCache.keys())) {
+      if (k.startsWith(prefix) && (!pattern || k.includes(pattern))) {
+        memoryCache.delete(k);
+      }
+    }
+    // Invalidate sessionStorage
+    try {
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const k = sessionStorage.key(i);
+        if (k && k.startsWith(prefix) && (!pattern || k.includes(pattern))) {
+          sessionStorage.removeItem(k);
+        }
+      }
+    } catch (e) { }
+    // Invalidate localStorage
+    try {
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith(prefix) && (!pattern || k.includes(pattern))) {
+          localStorage.removeItem(k);
+        }
+      }
+    } catch (e) { }
+  }
+
+  function clearAll() {
+    memoryCache.clear();
+    inflightRequests.clear();
+    try {
+      for (let i = sessionStorage.length - 1; i >= 0; i--) {
+        const k = sessionStorage.key(i);
+        if (k && k.startsWith('fr_c_')) sessionStorage.removeItem(k);
+      }
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i);
+        if (k && k.startsWith('fr_c_')) localStorage.removeItem(k);
+      }
+    } catch (e) { }
+  }
+
+  return { get, set, invalidate, clearAll, inflightRequests };
+})();
+
+// ── ENCRYPTED CLIENT DATA STORE (Instant In-Memory + AES-GCM Encrypted Storage) ──
+const AppDataStore = (() => {
+  let _registers = [];
+  let _isLoaded = false;
+  let _isSyncing = false;
+  let _lastSynced = null;
+  const listeners = new Set();
+
+  function subscribe(fn) {
+    listeners.add(fn);
+    return () => listeners.delete(fn);
+  }
+
+  function notify(event, payload) {
+    listeners.forEach(fn => {
+      try { fn(event, payload); } catch (e) { console.error('DataStore listener error:', e); }
+    });
+  }
+
+  async function loadFromEncryptedStorage() {
+    if (typeof CryptoStore === 'undefined') return false;
+    try {
+      const stored = await CryptoStore.load('all_registers');
+      if (stored && Array.isArray(stored.files) && stored.files.length) {
+        _registers = stored.files;
+        _lastSynced = stored.lastSynced || null;
+        _isLoaded = true;
+        notify('loaded', { source: 'cache', count: _registers.length });
+        return true;
+      }
+    } catch (e) {
+      console.warn('Could not load encrypted local store:', e);
+    }
+    return false;
+  }
+
+  async function saveToEncryptedStorage() {
+    if (typeof CryptoStore === 'undefined') return false;
+    try {
+      await CryptoStore.save('all_registers', {
+        files: _registers,
+        lastSynced: _lastSynced || Date.now()
+      });
+      return true;
+    } catch (e) {
+      console.warn('Could not save encrypted local store:', e);
+      return false;
+    }
+  }
+
+  async function syncFromCloud(force = false) {
+    if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') return [];
+    if (_isSyncing) return _registers;
+
+    _isSyncing = true;
+    notify('sync_start');
+
+    try {
+      const res = await api('getFiles', { fetchAll: 'true', pageSize: 'all' }, null, { skipDedup: force });
+      const files = (res && Array.isArray(res.files)) ? res.files : [];
+      _registers = files;
+      _lastSynced = Date.now();
+      _isLoaded = true;
+      _isSyncing = false;
+
+      // Save encrypted in background
+      saveToEncryptedStorage();
+      notify('sync_success', { count: files.length, lastSynced: _lastSynced });
+      return _registers;
+    } catch (err) {
+      _isSyncing = false;
+      notify('sync_error', { error: err.message });
+      throw err;
+    }
+  }
+
+  async function ensureLoaded() {
+    if (_isLoaded && _registers.length > 0) return _registers;
+    const loadedFromCache = await loadFromEncryptedStorage();
+    if (loadedFromCache && _registers.length > 0) {
+      // Re-sync silently in background if older than 10 mins
+      if (!_lastSynced || (Date.now() - _lastSynced) > 10 * 60 * 1000) {
+        syncFromCloud().catch(() => { });
+      }
+      return _registers;
+    }
+    return await syncFromCloud();
+  }
+
+  function query(filters = {}, page = 1, pageSize = 50) {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const search = String(filters.search || '').trim().toLowerCase();
+    const category = String(filters.category || '').trim().toLowerCase();
+    const subCategory = String(filters.subCategory || '').trim().toLowerCase();
+    const location = String(filters.location || '').trim().toLowerCase();
+    const binLocation = String(filters.binLocation || '').trim().toLowerCase();
+    const status = String(filters.status || '').trim().toLowerCase();
+    const heldBy = String(filters.heldBy || '').trim().toLowerCase();
+    const oldFileNumber = String(filters.oldFileNumber || '').trim().toLowerCase();
+    const filesCountFilter = String(filters.filesCount || '').trim();
+    const inclArchived = filters.includeArchived === 'true' || filters.includeArchived === true;
+
+    const filtered = _registers.filter(f => {
+      const fStatus = String(f.status || '').trim();
+      if (!inclArchived && (fStatus === 'Archived' || fStatus === 'Deleted')) return false;
+
+      if (category && String(f.category || '').trim().toLowerCase() !== category) return false;
+      if (subCategory && String(f.subCategory || '').trim().toLowerCase() !== subCategory) return false;
+      if (location && String(f.location || '').trim().toLowerCase() !== location) return false;
+      if (binLocation && String(f.binLocation || '').trim().toLowerCase() !== binLocation) return false;
+      if (status && fStatus.toLowerCase() !== status) return false;
+      if (heldBy && String(f.heldBy || '').trim().toLowerCase() !== heldBy) return false;
+      if (oldFileNumber && String(f.oldFileNumber || '').trim().toLowerCase() !== oldFileNumber) return false;
+
+      const count = Number(f.fileCount || f.filesCount || 0);
+      if (filesCountFilter === 'has_files' && count === 0) return false;
+      if (filesCountFilter === 'no_files' && count > 0) return false;
+
+      if (search) {
+        const searchStr = [
+          f.fileNumber, f.oldFileNumber, f.clientName, f.category, f.subCategory,
+          f.details, f.entity, f.businessVertical, f.location, f.binLocation,
+          f.status, f.heldBy, f.hod, f.notes, f.tags
+        ].map(v => String(v || '').toLowerCase()).join(' ');
+
+        if (!searchStr.includes(search)) return false;
+      }
+
+      return true;
+    });
+
+    const stats = {
+      total: filtered.length,
+      totalFiles: 0,
+      checkedOut: 0,
+      overdue: 0
+    };
+
+    filtered.forEach(f => {
+      stats.totalFiles += Number(f.fileCount || f.filesCount || 0);
+      if (f.status === 'Checked out') {
+        stats.checkedOut++;
+        if (f.dueDate) {
+          const d = new Date(f.dueDate);
+          d.setHours(0, 0, 0, 0);
+          if (d < today) stats.overdue++;
+        }
+      }
+    });
+
+    const total = filtered.length;
+    const safePageSize = pageSize === 'all' ? (total || 1) : Math.max(1, parseInt(pageSize, 10) || 50);
+    const pages = Math.ceil(total / safePageSize) || 1;
+    const safePage = Math.min(Math.max(1, page), pages);
+    const start = (safePage - 1) * safePageSize;
+    const slice = safePageSize >= total ? filtered : filtered.slice(start, start + safePageSize);
+
+    return {
+      files: slice,
+      total,
+      pages,
+      page: safePage,
+      pageSize: safePageSize,
+      stats,
+      isEncryptedLocal: true
+    };
+  }
+
+  function updateItem(fileNumber, changes = {}) {
+    const idx = _registers.findIndex(f => f.fileNumber === fileNumber);
+    if (idx !== -1) {
+      _registers[idx] = Object.assign({}, _registers[idx], changes);
+      saveToEncryptedStorage();
+      notify('item_updated', { fileNumber, file: _registers[idx] });
+    }
+  }
+
+  function addItem(newFile) {
+    if (!newFile || !newFile.fileNumber) return;
+    const existingIdx = _registers.findIndex(f => f.fileNumber === newFile.fileNumber);
+    if (existingIdx !== -1) {
+      _registers[existingIdx] = Object.assign({}, _registers[existingIdx], newFile);
+    } else {
+      _registers.unshift(newFile);
+    }
+    saveToEncryptedStorage();
+    notify('item_added', { file: newFile });
+  }
+
+  function deleteItem(fileNumber) {
+    const idx = _registers.findIndex(f => f.fileNumber === fileNumber);
+    if (idx !== -1) {
+      _registers.splice(idx, 1);
+      saveToEncryptedStorage();
+      notify('item_deleted', { fileNumber });
+    }
+  }
+
+  function updateSubfileCount(fileNumber, newCount) {
+    const idx = _registers.findIndex(f => f.fileNumber === fileNumber);
+    if (idx !== -1) {
+      _registers[idx].fileCount = newCount;
+      _registers[idx].filesCount = newCount;
+      saveToEncryptedStorage();
+      notify('item_updated', { fileNumber, file: _registers[idx] });
+    }
+  }
+
+  function clear() {
+    _registers = [];
+    _isLoaded = false;
+    _isSyncing = false;
+    _lastSynced = null;
+  }
+
+  return {
+    get registers() { return _registers; },
+    get isLoaded() { return _isLoaded; },
+    get isSyncing() { return _isSyncing; },
+    get lastSynced() { return _lastSynced; },
+    subscribe,
+    ensureLoaded,
+    syncFromCloud,
+    loadFromEncryptedStorage,
+    query,
+    updateItem,
+    addItem,
+    deleteItem,
+    updateSubfileCount,
+    clear
+  };
+})();
+
+// ── CONFIG LOADER (Cached in localStorage with 15-min TTL) ─────
 function loadConfig(force = false) {
   if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') {
-    // Demo mode with empty config
     App.config = { clients: [], categories: [], subcategories: [], lists: { 'Locations': ['Mumbai', 'Pune', 'Kolkata'], 'File Types': ['Flat File', 'Cover File', 'Box File'], 'Status (fixed)': ['In office', 'Checked out', 'Archived', 'Missing'], 'Business Verticals': [], 'HODs': [], 'Entities': [], 'Colours': [], 'Bin Locations': [] } };
     return Promise.resolve(App.config);
   }
+
+  if (!force) {
+    const cachedConfig = AppCache.get('config', 'local');
+    if (cachedConfig) {
+      App.config = cachedConfig;
+      return Promise.resolve(cachedConfig);
+    }
+  }
+
   if (!force && App._configLoading) return App._configLoading;
+
   App._configLoading = api('getConfig').then(data => {
     App.config = data;
+    AppCache.set('config', data, 15 * 60 * 1000, 'local'); // 15-minute TTL
     return data;
   }).catch(err => {
     console.error('Config load failed:', err);
     App.config = App.config || { clients: [], categories: [], subcategories: [], lists: {} };
+    return App.config;
+  }).finally(() => {
+    App._configLoading = null;
   });
+
   return App._configLoading;
 }
 
-// ── API LAYER ─────────────────────────────────────────────────
-function api(action, params = {}, body = null) {
+// ── API LAYER (With Request Pooling & Automatic Cache Invalidation) ──
+function api(action, params = {}, body = null, options = {}) {
   if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') {
     return Promise.reject(new Error('Apps Script URL not configured. Please deploy Code.gs and update APPS_SCRIPT_URL in app.js'));
+  }
+
+  const isMutation = body !== null;
+  const queryString = Object.entries(params)
+    .filter(([_, v]) => v !== undefined && v !== null && v !== '')
+    .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+    .sort()
+    .join('&');
+  const cacheKey = action + (queryString ? '?' + queryString : '');
+
+  // Deduplicate identical in-flight GET requests
+  if (!isMutation && !options.skipDedup && AppCache.inflightRequests.has(cacheKey)) {
+    return AppCache.inflightRequests.get(cacheKey);
   }
 
   const url = new URL(APPS_SCRIPT_URL);
   url.searchParams.set('action', action);
   Object.entries(params).forEach(([k, v]) => { if (v !== undefined && v !== null && v !== '') url.searchParams.set(k, v); });
 
-  const opts = body !== null
+  const opts = isMutation
     ? { method: 'POST', body: JSON.stringify({ action, ...body }) }
     : { method: 'GET' };
 
-  return fetch(url.toString(), opts)
+  const promise = fetch(url.toString(), opts)
     .then(r => r.json())
     .then(resp => {
       if (!resp.ok) throw new Error(resp.error || 'Server error');
+
+      // Smart auto-invalidation on successful write operations
+      if (isMutation) {
+        if (['addFile', 'updateFile', 'deleteFile', 'archiveFile', 'cleanRegisterFiles', 'bulkUpdateFiles', 'checkoutFile', 'returnFile'].includes(action)) {
+          AppCache.invalidate('files');
+          AppCache.invalidate('dashboard');
+          AppCache.invalidate('detail_');
+          AppCache.invalidate('reg_page_');
+        } else if (['addRegisterFile', 'updateRegisterFile', 'deleteRegisterFile'].includes(action)) {
+          AppCache.invalidate('detail_');
+          AppCache.invalidate('files');
+          AppCache.invalidate('reg_page_');
+        } else if (['addMaster', 'updateMaster', 'deleteMaster', 'addListItem', 'deleteListItem', 'bulkImportMaster'].includes(action)) {
+          AppCache.invalidate('config');
+          AppCache.invalidate('oldFiles');
+        } else if (['addUser', 'updateUser', 'setupUsers'].includes(action)) {
+          AppCache.invalidate('users_list');
+        }
+      }
+
       return resp.data;
+    })
+    .finally(() => {
+      if (!isMutation) {
+        AppCache.inflightRequests.delete(cacheKey);
+      }
     });
+
+  if (!isMutation) {
+    AppCache.inflightRequests.set(cacheKey, promise);
+  }
+
+  return promise;
 }
 
 // ── TOAST NOTIFICATIONS ───────────────────────────────────────
@@ -538,7 +977,7 @@ function openModal({ title, body, footer, size = '' }) {
     if (firstInput) {
       try {
         firstInput.focus({ preventScroll: true });
-      } catch(e) {
+      } catch (e) {
         firstInput.focus();
       }
     }
