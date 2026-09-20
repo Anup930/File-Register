@@ -28,18 +28,14 @@ const FileFormModule = (() => {
 
   // ── DETAIL VIEW ───────────────────────────────────────────────
   // ── DETAIL VIEW ───────────────────────────────────────────────
-  function renderDetail(container, topbarActions, fileNumber) {
-    container.innerHTML = '<div class="page-loading"><div class="spinner"></div><span>Loading…</span></div>';
+  function renderDetail(container, topbarActions, fileNumber, force = false) {
     if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') {
       container.innerHTML = '<div class="page-loading"><p>Connect Apps Script to view files.</p></div>'; return;
     }
-    Promise.all([
-      api('getFile', { fileNumber }),
-      api('getActivityLog', { fileNumber }),
-      api('getRegisterFiles', { registerNumber: fileNumber }).catch(() => [])
-    ]).then(([file, log, subFiles]) => {
-      const regFiles = (subFiles && subFiles.length) ? subFiles : (file.files || []);
 
+    const cacheKey = 'detail_' + fileNumber;
+
+    function renderWithData(file, log, regFiles) {
       const canEdit = App.can ? App.can('register.edit') : true;
       const canDelete = App.can ? App.can('register.delete') : true;
       const canCheckout = App.can ? App.can('checkout.manage') : true;
@@ -47,6 +43,7 @@ const FileFormModule = (() => {
 
       topbarActions.innerHTML = `
         <button class="btn btn-secondary btn-sm" id="d-btn-back">← Register</button>
+        <button class="btn btn-secondary btn-sm" id="d-btn-refresh" title="Refresh file details from Google Sheets">🔄 Refresh</button>
         ${canEdit ? '<button class="btn btn-warning btn-sm" id="d-btn-quick-status" style="font-weight:600;">⚡ Change Status / Location</button>' : ''}
         ${canEdit ? '<button class="btn btn-secondary btn-sm" id="d-btn-edit">✏️ Edit</button>' : ''}
         ${canCheckout ? `<button class="btn btn-${file.status === 'Checked out' ? 'success' : 'warning'} btn-sm" id="d-btn-checkout">
@@ -58,38 +55,68 @@ const FileFormModule = (() => {
       container.innerHTML = buildDetailHTML(file, log, regFiles);
 
       qs('#d-btn-back')?.addEventListener('click', () => navigate('#register'));
+      qs('#d-btn-refresh')?.addEventListener('click', () => {
+        AppCache.invalidate(cacheKey);
+        renderDetail(container, topbarActions, fileNumber, true);
+      });
       qs('#d-btn-quick-status')?.addEventListener('click', () => {
-        CheckoutModule.openQuickStatusLocation(file, () => renderDetail(container, topbarActions, fileNumber));
+        CheckoutModule.openQuickStatusLocation(file, () => {
+          AppCache.invalidate(cacheKey);
+          renderDetail(container, topbarActions, fileNumber, true);
+        });
       });
       qs('#d-btn-card-quick-status')?.addEventListener('click', () => {
-        CheckoutModule.openQuickStatusLocation(file, () => renderDetail(container, topbarActions, fileNumber));
+        CheckoutModule.openQuickStatusLocation(file, () => {
+          AppCache.invalidate(cacheKey);
+          renderDetail(container, topbarActions, fileNumber, true);
+        });
       });
       qs('#d-badge-status-trigger')?.addEventListener('click', () => {
-        CheckoutModule.openQuickStatusLocation(file, () => renderDetail(container, topbarActions, fileNumber));
+        CheckoutModule.openQuickStatusLocation(file, () => {
+          AppCache.invalidate(cacheKey);
+          renderDetail(container, topbarActions, fileNumber, true);
+        });
       });
       qs('#d-btn-edit')?.addEventListener('click', () => navigate(`#edit/${encodeURIComponent(fileNumber)}`));
       qs('#d-btn-sticker')?.addEventListener('click', () => StickerModule.openStickerFromFile(file));
       qs('#d-btn-delete')?.addEventListener('click', () => {
         confirmDialog(`Permanently delete Register <strong>${fileNumber}</strong>?`, () => {
           api('deleteFile', {}, { action: 'deleteFile', fileNumber, deletedBy: App.user })
-            .then(() => { toast('Register deleted', 'success'); navigate('#register'); })
+            .then(() => {
+              if (typeof AppDataStore !== 'undefined') AppDataStore.deleteItem(fileNumber);
+              AppCache.invalidate(cacheKey);
+              toast('Register deleted', 'success');
+              navigate('#register');
+            })
             .catch(err => toast(err.message, 'error'));
         }, 'Delete');
       });
       qs('#d-btn-checkout')?.addEventListener('click', () => {
         if (file.status === 'Checked out') {
-          CheckoutModule.openReturn(fileNumber, () => renderDetail(container, topbarActions, fileNumber));
+          CheckoutModule.openReturn(fileNumber, () => {
+            AppCache.invalidate(cacheKey);
+            renderDetail(container, topbarActions, fileNumber, true);
+          });
         } else {
-          CheckoutModule.openCheckout(fileNumber, () => renderDetail(container, topbarActions, fileNumber));
+          CheckoutModule.openCheckout(fileNumber, () => {
+            AppCache.invalidate(cacheKey);
+            renderDetail(container, topbarActions, fileNumber, true);
+          });
         }
       });
 
       // Bind Add File button
       qs('#btn-add-reg-file')?.addEventListener('click', () => {
-        openAddRegisterFileModal(fileNumber, null, () => renderDetail(container, topbarActions, fileNumber));
+        openAddRegisterFileModal(fileNumber, null, () => {
+          AppCache.invalidate(cacheKey);
+          renderDetail(container, topbarActions, fileNumber, true);
+        });
       });
       qs('#btn-add-reg-file-empty')?.addEventListener('click', () => {
-        openAddRegisterFileModal(fileNumber, null, () => renderDetail(container, topbarActions, fileNumber));
+        openAddRegisterFileModal(fileNumber, null, () => {
+          AppCache.invalidate(cacheKey);
+          renderDetail(container, topbarActions, fileNumber, true);
+        });
       });
 
       // Bind Empty / Clean Register button
@@ -100,8 +127,10 @@ const FileFormModule = (() => {
           () => {
             api('cleanRegisterFiles', {}, { action: 'cleanRegisterFiles', registerNumber: fileNumber, deletedBy: App.user || 'System' })
               .then(res => {
+                if (typeof AppDataStore !== 'undefined') AppDataStore.updateSubfileCount(fileNumber, 0);
+                AppCache.invalidate(cacheKey);
                 toast(`Register cleaned! ${res.cleanedCount !== undefined ? res.cleanedCount : regFiles.length} file(s) marked as deleted.`, 'success');
-                renderDetail(container, topbarActions, fileNumber);
+                renderDetail(container, topbarActions, fileNumber, true);
               })
               .catch(err => toast(err.message, 'error'));
           },
@@ -115,7 +144,10 @@ const FileFormModule = (() => {
         b.addEventListener('click', () => {
           const fid = b.dataset.fileId;
           const target = regFiles.find(x => x.fileId === fid);
-          if (target) openAddRegisterFileModal(fileNumber, target, () => renderDetail(container, topbarActions, fileNumber));
+          if (target) openAddRegisterFileModal(fileNumber, target, () => {
+            AppCache.invalidate(cacheKey);
+            renderDetail(container, topbarActions, fileNumber, true);
+          });
         });
       });
 
@@ -130,8 +162,13 @@ const FileFormModule = (() => {
             () => {
               api('deleteRegisterFile', {}, { action: 'deleteRegisterFile', fileId: fid, deletedBy: App.user || 'System' })
                 .then(() => {
+                  if (typeof AppDataStore !== 'undefined') {
+                    const cur = (regFiles.length > 0) ? regFiles.length - 1 : 0;
+                    AppDataStore.updateSubfileCount(fileNumber, cur);
+                  }
+                  AppCache.invalidate(cacheKey);
                   toast('File deleted from register', 'success');
-                  renderDetail(container, topbarActions, fileNumber);
+                  renderDetail(container, topbarActions, fileNumber, true);
                 })
                 .catch(err => toast(err.message, 'error'));
             },
@@ -150,6 +187,26 @@ const FileFormModule = (() => {
           container.querySelector(`#tab-${btn.dataset.tab}`)?.classList.add('active');
         });
       });
+    }
+
+    // 1. Instant Cache Check (0ms)
+    if (!force) {
+      const cached = AppCache.get(cacheKey, 'session');
+      if (cached && cached.file) {
+        renderWithData(cached.file, cached.log || [], cached.subFiles || []);
+        return;
+      }
+    }
+
+    container.innerHTML = '<div class="page-loading"><div class="spinner"></div><span>Loading file details…</span></div>';
+    Promise.all([
+      api('getFile', { fileNumber }),
+      api('getActivityLog', { fileNumber }),
+      api('getRegisterFiles', { registerNumber: fileNumber }).catch(() => [])
+    ]).then(([file, log, subFiles]) => {
+      const regFiles = (subFiles && subFiles.length) ? subFiles : (file.files || []);
+      AppCache.set(cacheKey, { file, log, subFiles: regFiles }, 2 * 60 * 1000, 'session'); // 2-min cache
+      renderWithData(file, log, regFiles);
     }).catch(err => {
       container.innerHTML = `<div class="page-loading"><p style="color:var(--danger)">${err.message}</p></div>`;
     });
@@ -416,6 +473,11 @@ const FileFormModule = (() => {
 
       api(action, {}, { action, ...payload })
         .then(() => {
+          if (typeof AppDataStore !== 'undefined' && !isEdit) {
+            const currentItem = (AppDataStore.registers || []).find(f => f.fileNumber === registerNumber);
+            const curCount = Number(currentItem?.fileCount || currentItem?.filesCount || 0);
+            AppDataStore.updateSubfileCount(registerNumber, curCount + 1);
+          }
           toast(isEdit ? 'File updated' : 'File added to register', 'success');
           closeModal();
           if (onDone) onDone();
@@ -692,6 +754,14 @@ const FileFormModule = (() => {
 
     const action = isEdit ? 'updateFile' : 'addFile';
     api(action, {}, body).then(r => {
+      if (typeof AppDataStore !== 'undefined') {
+        const item = Object.assign({}, body, r);
+        if (isEdit) {
+          AppDataStore.updateItem(file.fileNumber, item);
+        } else {
+          AppDataStore.addItem(item);
+        }
+      }
       toast(isEdit ? 'File updated!' : `File registered: ${r.fileNumber}`, 'success');
       navigate(isEdit ? `#file/${encodeURIComponent(file.fileNumber)}` : '#register');
     }).catch(err => {

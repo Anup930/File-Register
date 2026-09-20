@@ -30,7 +30,12 @@ const CheckoutModule = (() => {
       const btn = overlay.querySelector('#co-submit');
       btn.disabled = true; btn.textContent = 'Saving…';
       api('checkoutFile', {}, { action: 'checkoutFile', fileNumber, heldBy, dueDate })
-        .then(() => { toast(`File checked out to ${heldBy}`, 'success'); closeModal(); if (onSuccess) onSuccess(); })
+        .then(() => {
+          if (typeof AppDataStore !== 'undefined') {
+            AppDataStore.updateItem(fileNumber, { status: 'Checked out', heldBy, dueDate });
+          }
+          toast(`File checked out to ${heldBy}`, 'success'); closeModal(); if (onSuccess) onSuccess();
+        })
         .catch(err => { toast('Checkout failed: ' + err.message, 'error'); btn.disabled = false; btn.textContent = '📤 Check Out'; });
     });
 
@@ -60,7 +65,12 @@ const CheckoutModule = (() => {
       const btn = overlay.querySelector('#ret-submit');
       btn.disabled = true; btn.textContent = 'Saving…';
       api('returnFile', {}, { action: 'returnFile', fileNumber, returnedBy })
-        .then(() => { toast('File returned to office', 'success'); closeModal(); if (onSuccess) onSuccess(); })
+        .then(() => {
+          if (typeof AppDataStore !== 'undefined') {
+            AppDataStore.updateItem(fileNumber, { status: 'In office', heldBy: '', dueDate: '' });
+          }
+          toast('File returned to office', 'success'); closeModal(); if (onSuccess) onSuccess();
+        })
         .catch(err => { toast('Return failed: ' + err.message, 'error'); btn.disabled = false; btn.textContent = '↩️ Mark as Returned'; });
     });
   }
@@ -223,6 +233,15 @@ const CheckoutModule = (() => {
           updatedBy: App.user || 'System'
         })
         .then(res => {
+          if (typeof AppDataStore !== 'undefined') {
+            AppDataStore.updateItem(fn, {
+              status: newStatus,
+              location: newLocation,
+              binLocation: newBin,
+              heldBy: newHeldBy,
+              dueDate: newDueDate
+            });
+          }
           toast(`Status & location updated for ${fn}`, 'success');
           closeModal();
           if (onSuccess) onSuccess(res);

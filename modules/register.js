@@ -13,6 +13,10 @@ const RegisterModule = (() => {
   function render(container, topbarActions) {
     const canCreate = App.can ? App.can('register.create') : true;
     topbarActions.innerHTML = `
+      <span id="reg-sync-indicator" class="badge" style="background:#e8f0fe;color:#1a73e8;font-size:0.75rem;padding:4px 8px;font-weight:600;display:inline-flex;align-items:center;gap:4px;">
+        🔒 Encrypted Local DB
+      </span>
+      <button class="btn btn-secondary btn-sm no-print" id="btn-refresh-register" title="Live sync all registers from Google Sheets">🔄 Cloud Sync</button>
       <button class="btn btn-secondary btn-sm no-print" id="btn-export-csv">📥 Export CSV</button>
       ${canCreate ? '<a href="#add" class="btn btn-primary btn-sm no-print">➕ Add File</a>' : ''}`;
 
@@ -168,6 +172,9 @@ const RegisterModule = (() => {
   }
 
   function bindTopbarActions(container) {
+    document.getElementById('btn-refresh-register')?.addEventListener('click', () => {
+      fetchAndRender(true);
+    });
     document.getElementById('btn-export-csv')?.addEventListener('click', exportAll);
     document.getElementById('btn-clear-filters')?.addEventListener('click', () => clearFilters(container));
 
@@ -197,8 +204,11 @@ const RegisterModule = (() => {
       });
     });
 
-    // Setup Old File Number Searchable Dropdown
-    let oldFilesList = App.config?.oldFileNumbers || [];
+    // Setup Old File Number Searchable Dropdown with local caching
+    let oldFilesList = App.config?.oldFileNumbers || AppCache.get('oldFiles', 'local') || [];
+    if ((!oldFilesList || !oldFilesList.length) && typeof AppDataStore !== 'undefined' && AppDataStore.registers.length) {
+      oldFilesList = Array.from(new Set(AppDataStore.registers.map(f => f.oldFileNumber).filter(Boolean))).sort();
+    }
 
     const oldFileBtn     = document.getElementById('reg-old-file-btn');
     const oldFilePopover = document.getElementById('reg-old-file-popover');
@@ -251,13 +261,14 @@ const RegisterModule = (() => {
 
     renderOldFileOptions();
 
-    // Auto-fetch if not already present in App.config
+    // Auto-fetch if not already present in App.config or cache
     if (!oldFilesList.length && APPS_SCRIPT_URL !== 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') {
       api('getOldFileNumbers').then(list => {
         if (Array.isArray(list) && list.length) {
           oldFilesList = list;
           if (!App.config) App.config = {};
           App.config.oldFileNumbers = list;
+          AppCache.set('oldFiles', list, 60 * 60 * 1000, 'local'); // 1-hour cache
           renderOldFileOptions(oldFileSearch ? oldFileSearch.value : '');
         }
       }).catch(() => {});
@@ -289,7 +300,13 @@ const RegisterModule = (() => {
     const searchEl = document.getElementById('reg-search');
     if (searchEl) searchEl.addEventListener('input', e => {
       clearTimeout(debounceTimer);
-      debounceTimer = setTimeout(() => { state.search = e.target.value.trim(); state.page = 1; fetchAndRender(); }, 300);
+      state.search = e.target.value.trim();
+      state.page = 1;
+      if (typeof AppDataStore !== 'undefined' && AppDataStore.isLoaded) {
+        fetchAndRender();
+      } else {
+        debounceTimer = setTimeout(() => { fetchAndRender(); }, 150);
+      }
     });
 
     const cfg = App.config || {};
@@ -364,10 +381,24 @@ const RegisterModule = (() => {
     fetchAndRender();
   }
 
-  function fetchAndRender() {
+  function updateSyncBadge() {
+    const badge = document.getElementById('reg-sync-indicator');
+    if (!badge) return;
+    const count = (typeof AppDataStore !== 'undefined' && AppDataStore.registers) ? AppDataStore.registers.length : (state.total || 0);
+    const lastSync = typeof AppDataStore !== 'undefined' ? AppDataStore.lastSynced : null;
+    let timeStr = '';
+    if (lastSync) {
+      const diffSec = Math.round((Date.now() - lastSync) / 1000);
+      if (diffSec < 60) timeStr = 'Just now';
+      else if (diffSec < 3600) timeStr = `${Math.floor(diffSec / 60)}m ago`;
+      else timeStr = `${Math.floor(diffSec / 3600)}h ago`;
+    }
+    badge.innerHTML = `🔒 Encrypted (${count} files)${timeStr ? ` · 🔄 ${timeStr}` : ''}`;
+  }
+
+  function fetchAndRender(force = false) {
     const wrap = document.getElementById('reg-table-wrap');
     if (!wrap) return;
-    wrap.innerHTML = '<div class="page-loading"><div class="spinner"></div></div>';
 
     if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') {
       wrap.innerHTML = '<div class="table-empty"><p>Connect Apps Script to see files.</p></div>';
@@ -388,7 +419,7 @@ const RegisterModule = (() => {
       includeArchived: state.status === 'Archived' ? 'true' : 'false',
     };
 
-    api('getFiles', params).then(data => {
+    function applyData(data) {
       state.files = data.files || [];
       state.total = data.total || 0;
       state.pages = data.pages || 0;
@@ -414,7 +445,6 @@ const RegisterModule = (() => {
       });
 
       if (s.total === undefined) s.total = state.total;
-      // Use client-calculated file count if server returned 0 or missing but page has files
       if (s.totalFiles === undefined || (s.totalFiles === 0 && pageTotalFiles > 0)) {
         s.totalFiles = pageTotalFiles;
       }
@@ -426,9 +456,63 @@ const RegisterModule = (() => {
 
       wrap.innerHTML = buildTable(state.files) + buildPagination();
       bindTableActions(wrap);
-    }).catch(err => {
-      wrap.innerHTML = `<div class="table-empty"><p style="color:var(--danger)">Error: ${err.message}</p></div>`;
-    });
+      updateSyncBadge();
+    }
+
+    // 1. If force cloud sync requested via Cloud Sync button
+    if (force) {
+      const syncBtn = document.getElementById('btn-refresh-register');
+      if (syncBtn) {
+        syncBtn.disabled = true;
+        syncBtn.textContent = '🔄 Syncing…';
+      }
+      toast('Syncing all registers from Google Sheets…', 'info');
+
+      AppDataStore.syncFromCloud(true)
+        .then(() => {
+          if (syncBtn) {
+            syncBtn.disabled = false;
+            syncBtn.textContent = '🔄 Cloud Sync';
+          }
+          toast('✅ Synchronized with Google Sheets!', 'success');
+          const data = AppDataStore.query(params, state.page, state.pageSize);
+          applyData(data);
+        })
+        .catch(err => {
+          if (syncBtn) {
+            syncBtn.disabled = false;
+            syncBtn.textContent = '🔄 Cloud Sync';
+          }
+          toast('Cloud sync failed: ' + err.message, 'error');
+          const data = AppDataStore.query(params, state.page, state.pageSize);
+          applyData(data);
+        });
+      return;
+    }
+
+    // 2. Instant Query if encrypted store is already in-memory (0ms execution!)
+    if (typeof AppDataStore !== 'undefined' && AppDataStore.isLoaded && AppDataStore.registers.length > 0) {
+      const data = AppDataStore.query(params, state.page, state.pageSize);
+      applyData(data);
+      return;
+    }
+
+    // 3. Otherwise, initialize from Encrypted Storage or Cloud
+    wrap.innerHTML = '<div class="page-loading"><div class="spinner"></div><span>Loading encrypted register…</span></div>';
+
+    AppDataStore.ensureLoaded()
+      .then(() => {
+        const data = AppDataStore.query(params, state.page, state.pageSize);
+        applyData(data);
+      })
+      .catch(err => {
+        // Fallback to direct API call if local crypto store has an issue
+        api('getFiles', params)
+          .then(data => applyData(data))
+          .catch(e => {
+            wrap.innerHTML = `<div class="table-empty"><p style="color:var(--danger)">Error: ${e.message}</p></div>`;
+          });
+      });
   }
 
   function buildTable(files) {
@@ -794,6 +878,9 @@ const RegisterModule = (() => {
         updates: updates,
         updatedBy: App.user || 'System'
       }).then(res => {
+        if (typeof AppDataStore !== 'undefined') {
+          selectedList.forEach(fn => AppDataStore.updateItem(fn, updates));
+        }
         closeModal();
         toast(`✅ Successfully updated ${res.count || selectedList.length} files!`, 'success');
         state.selectedFiles.clear();
@@ -850,16 +937,41 @@ const RegisterModule = (() => {
   function doDelete(fn) {
     confirmDialog(`Permanently delete file <strong>${fn}</strong>? This cannot be undone.`, () => {
       api('deleteFile', {}, { action: 'deleteFile', fileNumber: fn, deletedBy: App.user })
-        .then(() => { toast('File deleted', 'success'); fetchAndRender(); })
+        .then(() => {
+          if (typeof AppDataStore !== 'undefined') {
+            AppDataStore.deleteItem(fn);
+          }
+          toast('File deleted', 'success');
+          fetchAndRender();
+        })
         .catch(err => toast('Delete failed: ' + err.message, 'error'));
     }, 'Delete');
   }
 
   function exportAll() {
     if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') { toast('Connect Apps Script first', 'warning'); return; }
+    const params = {
+      search: state.search,
+      category: state.category,
+      subCategory: state.subCategory,
+      filesCount: state.filesCount,
+      location: state.location,
+      binLocation: state.binLocation,
+      status: state.status,
+      heldBy: state.heldBy,
+      oldFileNumber: state.oldFileNumber,
+      includeArchived: 'true'
+    };
+
+    if (typeof AppDataStore !== 'undefined' && AppDataStore.isLoaded && AppDataStore.registers.length) {
+      const result = AppDataStore.query(params, 1, 'all');
+      exportToCSV(result.files || [], `file-register-${new Date().toISOString().slice(0,10)}.csv`);
+      toast(`✅ Exported ${result.files.length} files to CSV`, 'success');
+      return;
+    }
+
     toast('Fetching all files for export…');
-    const params = { page: 1, pageSize: 5000, search: state.search, status: state.status, location: state.location, entity: state.entity, businessVertical: state.businessVertical, hod: state.hod, fileType: state.fileType, oldFileNumber: state.oldFileNumber, includeArchived: 'true' };
-    api('getFiles', params).then(data => {
+    api('getFiles', Object.assign({ page: 1, pageSize: 5000 }, params)).then(data => {
       exportToCSV(data.files || [], `file-register-${new Date().toISOString().slice(0,10)}.csv`);
       toast('CSV exported', 'success');
     }).catch(err => toast('Export failed: ' + err.message, 'error'));

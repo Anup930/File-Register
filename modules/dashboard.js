@@ -6,8 +6,25 @@ const DashboardModule = (() => {
       container.innerHTML = renderOfflineWarning();
       return;
     }
+
+    if (topbarActions) {
+      topbarActions.innerHTML = `<button class="btn btn-secondary btn-sm" id="btn-refresh-dashboard">🔄 Refresh</button>`;
+      document.getElementById('btn-refresh-dashboard')?.addEventListener('click', () => {
+        AppCache.invalidate('dashboard');
+        render(container, topbarActions);
+      });
+    }
+
+    // 1. Instant Cache Check (0ms)
+    const cachedData = AppCache.get('dashboard', 'session');
+    if (cachedData) {
+      container.innerHTML = buildHTML(cachedData);
+      return;
+    }
+
     container.innerHTML = '<div class="page-loading"><div class="spinner"></div><span>Loading dashboard…</span></div>';
     api('getDashboard').then(data => {
+      AppCache.set('dashboard', data, 2 * 60 * 1000, 'session'); // 2-min cache
       container.innerHTML = buildHTML(data);
     }).catch(err => {
       container.innerHTML = `<div class="page-loading"><p style="color:var(--danger)">Failed to load dashboard: ${err.message}</p></div>`;

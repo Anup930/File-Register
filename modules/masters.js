@@ -397,23 +397,22 @@ const MastersModule = (() => {
     `;
   }
 
-  function loadAndRenderUsers(container) {
+  function loadAndRenderUsers(container, force = false) {
     const wrap = container.querySelector('#users-table-container');
     if (!wrap) return;
 
     if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') {
       wrap.innerHTML = `
-        <div style="padding:28px;text-align:center;">
-          <p style="color:var(--gray-600);margin-bottom:12px">Connect Google Apps Script Web App to view live users.</p>
-          <div style="display:inline-block;padding:8px 16px;background:var(--gray-100);border-radius:8px;font-size:0.85rem">
-            Default Demo Accounts: <strong>admin</strong>, <strong>anup.singh</strong>, <strong>gretex.staff</strong> (Password: <code>Test</code>)
+        <div class="card" style="margin:20px 0;">
+          <div class="card-body" style="text-align:center;padding:32px;">
+            <p style="color:var(--gray-600)">Connect Google Apps Script to manage team users.</p>
           </div>
         </div>
       `;
       return;
     }
 
-    api('getUsers').then(users => {
+    function renderUserTable(users) {
       if (!Array.isArray(users) || !users.length) {
         wrap.innerHTML = `
           <div style="padding:36px 16px;text-align:center;">
@@ -488,13 +487,34 @@ const MastersModule = (() => {
           if (target) openEditUserModal(target, container);
         });
       });
+    }
+
+    // 1. Instant Cache Check (0ms)
+    if (!force) {
+      const cached = AppCache.get('users_list', 'session');
+      if (cached) {
+        renderUserTable(cached);
+        return;
+      }
+    }
+
+    wrap.innerHTML = '<div class="spinner"></div><span style="margin-left:8px;color:var(--gray-600)">Loading team users from sheet…</span>';
+
+    api('getUsers').then(users => {
+      AppCache.set('users_list', users, 3 * 60 * 1000, 'session'); // 3-min cache
+      renderUserTable(users);
     }).catch(err => {
       wrap.innerHTML = `<div style="padding:24px;text-align:center;color:var(--danger)">Error loading users: ${err.message}</div>`;
     });
 
     // Top actions
     const refreshBtn = container.querySelector('#btn-refresh-users');
-    if (refreshBtn) refreshBtn.onclick = () => loadAndRenderUsers(container);
+    if (refreshBtn) {
+      refreshBtn.onclick = () => {
+        AppCache.invalidate('users_list');
+        loadAndRenderUsers(container, true);
+      };
+    }
 
     const setupBtn = container.querySelector('#btn-setup-users-sheet');
     if (setupBtn) setupBtn.onclick = () => triggerSetupUsers(container);
