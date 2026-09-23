@@ -216,7 +216,15 @@ const StickerModule = (() => {
             <span class="search-icon">🔍</span>
             <input type="text" id="hist-search-input" class="search-input" placeholder="Search by file, client, person...">
           </div>
-          <button class="btn btn-secondary btn-sm" id="btn-refresh-history">🔄 Refresh</button>
+          <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+            <button class="btn btn-secondary btn-sm" id="btn-refresh-history">🔄 Refresh</button>
+            <button class="btn btn-danger btn-sm" id="btn-delete-selected-hist" style="display:none;background:#dc2626;color:white;border:none;font-weight:600;">
+              🗑️ Delete Selected (<span id="hist-selected-count">0</span>)
+            </button>
+            <button class="btn btn-ghost btn-sm" id="btn-clear-all-hist" style="color:var(--danger);font-size:0.82rem;font-weight:600;">
+              🗑️ Clear All
+            </button>
+          </div>
         </div>
         <div id="stk-history-table-wrap">
           <div class="page-loading"><div class="spinner"></div><span>Loading print history…</span></div>
@@ -245,10 +253,70 @@ const StickerModule = (() => {
       loadHistoryData(q);
     });
 
+    // Clear All button
+    overlay.querySelector('#btn-clear-all-hist')?.addEventListener('click', () => {
+      if (!confirm('⚠️ Are you sure you want to delete ALL sticker print history? This action cannot be undone.')) return;
+      const wrap = overlay.querySelector('#stk-history-table-wrap');
+      if (wrap) wrap.innerHTML = '<div class="page-loading"><div class="spinner"></div><span>Clearing all history…</span></div>';
+      api('deleteStickerHistory', {}, { deleteAll: true }).then(() => {
+        toast('All sticker print history cleared', 'success');
+        loadHistoryData('');
+      }).catch(err => {
+        if (err.message && err.message.includes('Unknown action')) {
+          toast('Please update Code.gs in Google Apps Script editor to enable deletion.', 'warning');
+        } else {
+          toast('Failed to clear history: ' + err.message, 'error');
+        }
+        loadHistoryData('');
+      });
+    });
+
+    // Delete Selected button
+    const btnDeleteSelected = overlay.querySelector('#btn-delete-selected-hist');
+    btnDeleteSelected?.addEventListener('click', () => {
+      const wrap = overlay.querySelector('#stk-history-table-wrap');
+      const checkedBoxes = wrap?.querySelectorAll('.hist-row-cb:checked') || [];
+      if (checkedBoxes.length === 0) return;
+      const printIds = Array.from(checkedBoxes).map(cb => cb.getAttribute('data-print-id')).filter(Boolean);
+      if (!confirm(`Are you sure you want to delete ${printIds.length} selected print history record(s)?`)) return;
+      btnDeleteSelected.disabled = true;
+      btnDeleteSelected.textContent = '⏳ Deleting…';
+      api('deleteStickerHistory', {}, { printIds: printIds }).then(() => {
+        toast(`${printIds.length} print history record(s) deleted`, 'success');
+        loadHistoryData(overlay.querySelector('#hist-search-input')?.value || '');
+      }).catch(err => {
+        if (err.message && err.message.includes('Unknown action')) {
+          toast('Please update Code.gs in Google Apps Script editor to enable deletion.', 'warning');
+        } else {
+          toast('Failed to delete history: ' + err.message, 'error');
+        }
+        loadHistoryData(overlay.querySelector('#hist-search-input')?.value || '');
+      });
+    });
+
+    function updateSelectionState() {
+      const wrap = overlay.querySelector('#stk-history-table-wrap');
+      if (!wrap) return;
+      const allCbs = wrap.querySelectorAll('.hist-row-cb');
+      const checked = wrap.querySelectorAll('.hist-row-cb:checked');
+      const countEl = overlay.querySelector('#hist-selected-count');
+      if (countEl) countEl.textContent = checked.length;
+      if (btnDeleteSelected) {
+        btnDeleteSelected.style.display = checked.length > 0 ? 'inline-flex' : 'none';
+        btnDeleteSelected.disabled = false;
+        btnDeleteSelected.innerHTML = `🗑️ Delete Selected (<span id="hist-selected-count">${checked.length}</span>)`;
+      }
+      const selectAll = wrap.querySelector('#hist-select-all');
+      if (selectAll) {
+        selectAll.checked = allCbs.length > 0 && checked.length === allCbs.length;
+      }
+    }
+
     function loadHistoryData(search = '') {
       const wrap = overlay.querySelector('#stk-history-table-wrap');
       if (!wrap) return;
       wrap.innerHTML = '<div class="page-loading"><div class="spinner"></div><span>Loading…</span></div>';
+      if (btnDeleteSelected) btnDeleteSelected.style.display = 'none';
 
       if (APPS_SCRIPT_URL === 'YOUR_APPS_SCRIPT_WEB_APP_URL_HERE') {
         wrap.innerHTML = '<div class="table-empty"><p>Connect Apps Script to view print history.</p></div>';
@@ -267,6 +335,7 @@ const StickerModule = (() => {
             <table>
               <thead>
                 <tr>
+                  <th style="width:36px;text-align:center;"><input type="checkbox" id="hist-select-all" style="cursor:pointer;" title="Select All"></th>
                   <th>Date & Time</th>
                   <th>File Number</th>
                   <th>Old File No.</th>
@@ -275,11 +344,15 @@ const StickerModule = (() => {
                   <th>Printed By</th>
                   <th>Location / Bin</th>
                   <th>Print ID</th>
+                  <th style="width:50px;text-align:center;">Action</th>
                 </tr>
               </thead>
               <tbody>
                 ${list.map(r => `
                   <tr>
+                    <td style="text-align:center;">
+                      <input type="checkbox" class="hist-row-cb" data-print-id="${escapeHTML(r.printId)}" data-file-num="${escapeHTML(r.fileNumber)}" style="cursor:pointer;">
+                    </td>
                     <td style="white-space:nowrap;font-size:0.8rem;font-weight:600;color:var(--gray-700);">${escapeHTML(r.printDateTime)}</td>
                     <td class="col-file-num"><a href="#file/${encodeURIComponent(r.fileNumber)}" target="_blank">${escapeHTML(r.fileNumber)}</a></td>
                     <td style="font-size:0.8rem;color:var(--gray-600);">${escapeHTML(r.oldFileNumber || '—')}</td>
@@ -288,6 +361,11 @@ const StickerModule = (() => {
                     <td style="white-space:nowrap;font-size:0.85rem;font-weight:600;color:var(--gray-900);">${escapeHTML(r.printedBy || '—')}</td>
                     <td style="font-size:0.8rem;color:var(--gray-600);">${escapeHTML(r.location || '—')} ${r.binLocation ? `(${escapeHTML(r.binLocation)})` : ''}</td>
                     <td style="font-family:monospace;font-size:0.75rem;color:var(--gray-500);">${escapeHTML(r.printId)}</td>
+                    <td style="text-align:center;">
+                      <button class="btn btn-ghost btn-xs btn-delete-single-hist" data-print-id="${escapeHTML(r.printId)}" data-file-num="${escapeHTML(r.fileNumber)}" title="Delete this record" style="color:var(--danger);padding:2px 6px;cursor:pointer;">
+                        🗑️
+                      </button>
+                    </td>
                   </tr>
                 `).join('')}
               </tbody>
@@ -295,6 +373,42 @@ const StickerModule = (() => {
           </div>
           <div style="font-size:0.78rem;color:var(--gray-500);padding:8px 4px;">Showing latest ${list.length} print records</div>
         `;
+
+        // Checkbox events
+        const selectAllCb = wrap.querySelector('#hist-select-all');
+        selectAllCb?.addEventListener('change', (e) => {
+          wrap.querySelectorAll('.hist-row-cb').forEach(cb => cb.checked = e.target.checked);
+          updateSelectionState();
+        });
+
+        wrap.querySelectorAll('.hist-row-cb').forEach(cb => {
+          cb.addEventListener('change', updateSelectionState);
+        });
+
+        // Single delete button events
+        wrap.querySelectorAll('.btn-delete-single-hist').forEach(btn => {
+          btn.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const pid = btn.getAttribute('data-print-id');
+            const fn = btn.getAttribute('data-file-num');
+            if (!confirm(`Delete print record for file "${fn}" (Print ID: ${pid})?`)) return;
+            btn.disabled = true;
+            btn.textContent = '⏳';
+            api('deleteStickerHistory', {}, { printId: pid }).then(() => {
+              toast('Print record deleted', 'success');
+              loadHistoryData(overlay.querySelector('#hist-search-input')?.value || '');
+            }).catch(err => {
+              if (err.message && err.message.includes('Unknown action')) {
+                toast('Please update Code.gs in Google Apps Script editor to enable deletion.', 'warning');
+              } else {
+                toast('Failed to delete: ' + err.message, 'error');
+              }
+              btn.disabled = false;
+              btn.textContent = '🗑️';
+            });
+          });
+        });
+
       }).catch(err => {
         wrap.innerHTML = `<div class="table-empty"><p style="color:var(--danger)">Error: ${err.message}</p></div>`;
       });
@@ -350,6 +464,9 @@ const StickerModule = (() => {
           <div style="display:flex;gap:6px;align-items:center;margin-left:auto;flex-wrap:wrap;">
             <button class="btn btn-secondary btn-sm" id="btn-stk-select-all-btn">☑️ Select All</button>
             <button class="btn btn-secondary btn-sm" id="btn-stk-deselect-all-btn">⬜ Clear Selection</button>
+            <button class="btn btn-danger btn-sm" id="btn-stk-remove-selected-btn" style="display:none;background:#dc2626;color:white;border:none;font-weight:600;padding:5px 12px;gap:5px;">
+              🗑️ Remove from Queue (<span id="stk-remove-count">0</span>)
+            </button>
             <button class="btn btn-ghost btn-sm" id="btn-stk-clear-filters" style="color:var(--danger);">↺ Reset Filters</button>
           </div>
         </div>
@@ -402,6 +519,32 @@ const StickerModule = (() => {
             ✓ Print history will be recorded to <strong>'Print Sticker'</strong> sheet with operator: <strong>${escapeHTML(App.user || 'System')}</strong>.
           </div>
 
+          <div style="margin-bottom:12px;">
+            <label style="font-size:12px; font-weight:bold; display:block; margin-bottom:4px;">Sheet Layout Preset</label>
+            <select id="stk-layout-preset" class="form-control" style="font-size:13px; font-weight:600;">
+              <option value="45mm" selected>Compact Cover [45mm] (Default — Fits up to 12 / Page)</option>
+              <option value="8-up">8 Stickers / A4 Page (2 × 4) — Standard File Cover [68mm]</option>
+              <option value="6-up">6 Stickers / A4 Page (2 × 3) — Medium [92mm]</option>
+              <option value="4-up">4 Stickers / A4 Page (2 × 2) — Large Cover [130mm]</option>
+              <option value="auto">Auto-Fit (Content tight, no empty bottom blank space)</option>
+              <option value="custom">Custom Dimensions</option>
+            </select>
+            <small style="color:var(--gray-500); font-size:11px; display:block; margin-top:3px;">
+              💡 45mm card height fits up to 12 stickers (6 rows × 2 cols) per A4 sheet cleanly.
+            </small>
+          </div>
+
+          <div style="display:flex; gap:10px; margin-bottom:10px;">
+            <div style="flex:1">
+              <label style="font-size:12px; font-weight:bold;">Columns per Page</label>
+              <input type="number" id="stk-cols" class="form-control" value="2" min="1" max="6">
+            </div>
+            <div style="flex:1">
+              <label style="font-size:12px; font-weight:bold;">Card Height (mm)</label>
+              <input type="number" id="stk-cardHeight" class="form-control" value="45" min="0" step="1" title="Set to 0 for auto-fit content height">
+            </div>
+          </div>
+
           <div style="display:flex; gap:10px; margin-bottom:10px;">
             <div style="flex:1"><label style="font-size:12px; font-weight:bold;">Row Gap (mm)</label><input type="number" id="stk-rowGap" class="form-control" value="2" step="1"></div>
             <div style="flex:1"><label style="font-size:12px; font-weight:bold;">Col Gap (mm)</label><input type="number" id="stk-colGap" class="form-control" value="2" step="1"></div>
@@ -409,12 +552,7 @@ const StickerModule = (() => {
           
           <div style="display:flex; gap:10px; margin-bottom:10px;">
             <div style="flex:1"><label style="font-size:12px; font-weight:bold;">Page Margin (mm)</label><input type="number" id="stk-pageMargin" class="form-control" value="5" step="1"></div>
-            <div style="flex:1"><label style="font-size:12px; font-weight:bold;">Padding (mm)</label><input type="number" id="stk-padding" class="form-control" value="4" step="1"></div>
-          </div>
-
-          <div style="margin-bottom:10px;">
-            <label style="font-size:12px; font-weight:bold;">Columns per Page</label>
-            <input type="number" id="stk-cols" class="form-control" value="2" min="1" max="6">
+            <div style="flex:1"><label style="font-size:12px; font-weight:bold;">Padding (mm)</label><input type="number" id="stk-padding" class="form-control" value="3" step="1"></div>
           </div>
           
           <div style="border-top:1px dashed #ccc; margin:15px 0; padding-top:10px;">
@@ -510,6 +648,41 @@ const StickerModule = (() => {
       updateSelectedCount();
     });
 
+    // Remove Selected from Queue Button
+    document.getElementById('btn-stk-remove-selected-btn')?.addEventListener('click', () => {
+      const selected = document.querySelectorAll('.sticker-select-cb:checked');
+      if (selected.length === 0) return;
+      const fns = [];
+      selected.forEach(cb => {
+        const idx = parseInt(cb.getAttribute('data-index'), 10);
+        if (allFiles[idx] && allFiles[idx].fileNumber) {
+          fns.push(allFiles[idx].fileNumber);
+        }
+      });
+      if (fns.length === 0) return;
+
+      const queueLabel = filterState.printQueue === 'printed' ? 'Already Printed' : 'Print Queue';
+      if (!confirm(`Remove ${fns.length} selected file(s) from ${queueLabel}?\n(This clears the print flag in Google Sheets so you can re-queue or print them again)`)) return;
+
+      const btn = document.getElementById('btn-stk-remove-selected-btn');
+      if (btn) {
+        btn.disabled = true;
+        btn.textContent = '⏳ Removing…';
+      }
+
+      api('removeFromPrintQueue', {}, { fileNumbers: fns, actor: App.user || 'System' }).then(res => {
+        toast(`${fns.length} file(s) removed from ${queueLabel}`, 'success');
+        fetchStickerFiles();
+      }).catch(err => {
+        if (err.message && err.message.includes('Unknown action')) {
+          toast('Please update Code.gs in Google Apps Script editor to enable queue removal.', 'warning');
+        } else {
+          toast('Failed to remove: ' + err.message, 'error');
+        }
+        if (btn) btn.disabled = false;
+      });
+    });
+
     // Print Modal Triggers
     document.getElementById('btn-print-sheet')?.addEventListener('click', () => {
       const selected = document.querySelectorAll('.sticker-select-cb:checked');
@@ -527,6 +700,45 @@ const StickerModule = (() => {
     };
     document.getElementById('btn-stk-modal-cancel')?.addEventListener('click', closeModalHandler);
     document.getElementById('btn-stk-modal-close-icon')?.addEventListener('click', closeModalHandler);
+
+    const presetEl = document.getElementById('stk-layout-preset');
+    presetEl?.addEventListener('change', (e) => {
+      const val = e.target.value;
+      const heightInput = document.getElementById('stk-cardHeight');
+      const colsInput = document.getElementById('stk-cols');
+      const paddingInput = document.getElementById('stk-padding');
+      const rowGapInput = document.getElementById('stk-rowGap');
+      if (val === '45mm') {
+        if (heightInput) heightInput.value = 45;
+        if (colsInput) colsInput.value = 2;
+        if (paddingInput) paddingInput.value = 2.5;
+        if (rowGapInput) rowGapInput.value = 2;
+      } else if (val === '8-up') {
+        if (heightInput) heightInput.value = 68;
+        if (colsInput) colsInput.value = 2;
+        if (paddingInput) paddingInput.value = 3;
+        if (rowGapInput) rowGapInput.value = 2;
+      } else if (val === '6-up') {
+        if (heightInput) heightInput.value = 92;
+        if (colsInput) colsInput.value = 2;
+        if (paddingInput) paddingInput.value = 4;
+        if (rowGapInput) rowGapInput.value = 2;
+      } else if (val === '4-up') {
+        if (heightInput) heightInput.value = 130;
+        if (colsInput) colsInput.value = 2;
+        if (paddingInput) paddingInput.value = 4;
+        if (rowGapInput) rowGapInput.value = 3;
+      } else if (val === 'auto') {
+        if (heightInput) heightInput.value = 0;
+        if (colsInput) colsInput.value = 2;
+        if (paddingInput) paddingInput.value = 3;
+        if (rowGapInput) rowGapInput.value = 2;
+      }
+    });
+
+    document.getElementById('stk-cardHeight')?.addEventListener('input', () => {
+      if (presetEl) presetEl.value = 'custom';
+    });
 
     document.getElementById('btn-stk-modal-print')?.addEventListener('click', () => {
       document.getElementById('stk-print-modal').style.display = 'none';
@@ -555,6 +767,14 @@ const StickerModule = (() => {
     if (topCount) topCount.textContent = count;
     const badgeSelected = document.getElementById('stk-badge-selected-txt');
     if (badgeSelected) badgeSelected.textContent = `${count} selected`;
+
+    const removeBtn = document.getElementById('btn-stk-remove-selected-btn');
+    if (removeBtn) {
+      removeBtn.style.display = count > 0 ? 'inline-flex' : 'none';
+      removeBtn.disabled = false;
+      const labelText = filterState.printQueue === 'printed' ? 'Remove from Printed' : 'Remove from Queue';
+      removeBtn.innerHTML = `🗑️ ${labelText} (<span id="stk-remove-count">${count}</span>)`;
+    }
   }
 
   function fetchStickerFiles() {
@@ -620,7 +840,8 @@ const StickerModule = (() => {
       
       if (isCard) {
         html += `
-          <div class="sheet-item-card" id="stk-wrapper-${i}" style="align-items: ${currentAlign}; text-align: ${currentAlign === 'flex-start' ? 'left' : currentAlign === 'center' ? 'center' : 'right'};">
+          <div class="sheet-item-card" id="stk-wrapper-${i}" style="align-items: ${currentAlign}; text-align: ${currentAlign === 'flex-start' ? 'left' : currentAlign === 'center' ? 'center' : 'right'}; position: relative;">
+            <button type="button" class="stk-card-remove-btn" data-filenumber="${escapeHTML(fn)}" title="Remove this sticker from queue / reset status" style="position:absolute; top:8px; left:8px; background:none; border:none; color:var(--gray-400); cursor:pointer; font-size:15px; padding:2px 6px; border-radius:4px; z-index:10; line-height:1; transition:all 0.15s;" onmouseover="this.style.color='#d93025';this.style.background='#fce8e6';" onmouseout="this.style.color='var(--gray-400)';this.style.background='none';">✕</button>
             <input type="checkbox" class="card-checkbox sticker-select-cb" data-index="${i}">
             <div class="sc-header">
               <div class="sc-fn" style="text-align: inherit;">${escapeHTML(fn)}</div>
@@ -649,6 +870,7 @@ const StickerModule = (() => {
               <div class="st-client">${escapeHTML(client)}</div>
             </div>
             <div class="st-col st-details">${escapeHTML(details)}</div>
+            <button type="button" class="stk-card-remove-btn" data-filenumber="${escapeHTML(fn)}" title="Remove this sticker from queue / reset status" style="margin-left:auto; margin-right:12px; background:none; border:none; color:var(--gray-400); cursor:pointer; font-size:16px; padding:4px 8px; border-radius:4px; line-height:1; transition:all 0.15s;" onmouseover="this.style.color='#d93025';this.style.background='#fce8e6';" onmouseout="this.style.color='var(--gray-400)';this.style.background='none';">✕</button>
           </div>
         `;
       }
@@ -660,6 +882,30 @@ const StickerModule = (() => {
     // Bind individual checkboxes to update count
     container.querySelectorAll('.sticker-select-cb').forEach(cb => {
       cb.addEventListener('change', updateSelectedCount);
+    });
+
+    // Bind individual remove buttons
+    container.querySelectorAll('.stk-card-remove-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const fn = btn.getAttribute('data-filenumber');
+        const queueLabel = filterState.printQueue === 'printed' ? 'Already Printed' : 'Print Queue';
+        if (!confirm(`Remove "${fn}" from ${queueLabel}?\n(This clears the print flag in Google Sheets so you can re-queue or print it again)`)) return;
+        btn.disabled = true;
+        btn.textContent = '⏳';
+        api('removeFromPrintQueue', {}, { fileNumbers: [fn], actor: App.user || 'System' }).then(() => {
+          toast(`"${fn}" removed from ${queueLabel}`, 'success');
+          fetchStickerFiles();
+        }).catch(err => {
+          if (err.message && err.message.includes('Unknown action')) {
+            toast('Please update Code.gs in Google Apps Script editor to enable queue removal.', 'warning');
+          } else {
+            toast('Failed to remove: ' + err.message, 'error');
+          }
+          btn.disabled = false;
+          btn.textContent = '✕';
+        });
+      });
     });
     
     // Generate barcodes
@@ -682,13 +928,15 @@ const StickerModule = (() => {
     const formatLabel = isCard ? 'Card View (Cover)' : 'Tabular Form (Spine)';
     
     // Get modal values
-    const cols = parseInt(document.getElementById('stk-cols').value) || 2;
-    const rowGap = parseFloat(document.getElementById('stk-rowGap').value) || 2;
-    const colGap = parseFloat(document.getElementById('stk-colGap').value) || 2;
-    const pageMargin = parseFloat(document.getElementById('stk-pageMargin').value) || 5;
-    const padding = parseFloat(document.getElementById('stk-padding').value) || 4;
-    const startRow = parseInt(document.getElementById('stk-startRow').value) || 1;
-    const startCol = parseInt(document.getElementById('stk-startCol').value) || 1;
+    const cols = parseInt(document.getElementById('stk-cols')?.value) || 2;
+    const cardHeightVal = document.getElementById('stk-cardHeight') ? parseFloat(document.getElementById('stk-cardHeight').value) : 45;
+    const cardHeight = isNaN(cardHeightVal) ? 45 : cardHeightVal;
+    const rowGap = parseFloat(document.getElementById('stk-rowGap')?.value) || 2;
+    const colGap = parseFloat(document.getElementById('stk-colGap')?.value) || 2;
+    const pageMargin = parseFloat(document.getElementById('stk-pageMargin')?.value) || 5;
+    const padding = parseFloat(document.getElementById('stk-padding')?.value) || 2.5;
+    const startRow = parseInt(document.getElementById('stk-startRow')?.value) || 1;
+    const startCol = parseInt(document.getElementById('stk-startCol')?.value) || 1;
 
     // Get selected cards and corresponding file objects
     const selectedIndices = [];
@@ -720,6 +968,8 @@ const StickerModule = (() => {
         const clone = el.cloneNode(true);
         const cb = clone.querySelector('.card-checkbox');
         if (cb) cb.remove();
+        const rm = clone.querySelector('.stk-card-remove-btn');
+        if (rm) rm.remove();
         htmlContent += clone.outerHTML;
       }
     });
@@ -739,20 +989,45 @@ const StickerModule = (() => {
         border: 1px dashed #ccc; 
         padding: ${padding}mm; 
         page-break-inside: avoid; 
-        height: 130mm; 
+        ${cardHeight <= 0 ? 'height: auto; min-height: 40mm;' : `height: ${cardHeight}mm; max-height: ${cardHeight}mm;`}
         box-sizing: border-box; 
         display: flex; flex-direction: column;
+        justify-content: flex-start;
+        overflow: hidden;
         align-items: ${currentAlign};
         text-align: ${currentAlign === 'flex-start' ? 'left' : currentAlign === 'center' ? 'center' : 'right'};
       }
       .sc-header { text-align: inherit; }
-      .sc-fn { font-family: monospace; font-weight: bold; font-size: 18px; margin-bottom: 8px; text-align: inherit; }
-      .sc-barcode { margin-bottom: 12px; }
-      .sc-barcode svg { max-width: 100%; height: auto; }
+      .sc-fn { 
+        font-family: monospace; 
+        font-weight: bold; 
+        font-size: ${cardHeight <= 50 ? '12px' : cardHeight <= 75 ? '14px' : '17px'}; 
+        margin-bottom: ${cardHeight <= 50 ? '1px' : cardHeight <= 75 ? '2px' : '6px'}; 
+        line-height: 1.15;
+        text-align: inherit; 
+      }
+      .sc-barcode { 
+        margin-bottom: ${cardHeight <= 50 ? '2px' : cardHeight <= 75 ? '4px' : '10px'}; 
+      }
+      .sc-barcode svg { 
+        max-width: 100%; 
+        max-height: ${cardHeight <= 50 ? '24px' : cardHeight <= 75 ? '32px' : '45px'}; 
+        height: auto; 
+      }
       .sc-body { display: flex; flex-direction: column; align-items: ${currentAlign}; width: 100%; }
-      .sc-row { display: flex; font-size: 13px; margin-bottom: 6px; }
-      .sc-key { width: 110px; font-weight: bold; }
-      .sc-val { flex: 1; }
+      .sc-row { 
+        display: flex; 
+        font-size: ${cardHeight <= 50 ? '9.5px' : cardHeight <= 75 ? '11px' : '12.5px'}; 
+        margin-bottom: ${cardHeight <= 50 ? '1px' : cardHeight <= 75 ? '2px' : '5px'}; 
+        line-height: 1.15; 
+      }
+      .sc-key { 
+        width: ${cardHeight <= 50 ? '70px' : cardHeight <= 75 ? '85px' : '105px'}; 
+        font-weight: bold; 
+        flex-shrink: 0; 
+        color: #333; 
+      }
+      .sc-val { flex: 1; word-break: break-word; }
       
       .sheet-tabular { 
         display: grid; 
@@ -766,15 +1041,17 @@ const StickerModule = (() => {
         padding: ${padding}mm; 
         page-break-inside: avoid; 
         align-items: center; 
-        min-height: 35mm; 
+        min-height: 28mm; 
+        max-height: 35mm;
+        box-sizing: border-box;
       }
       .st-col { padding: 4px; }
       .st-barcode { width: 35%; border-right: 1px dashed #eee; text-align: left; }
-      .st-barcode svg { max-width: 100%; height: auto; }
+      .st-barcode svg { max-width: 100%; max-height: 26px; height: auto; }
       .st-mid { width: 35%; border-right: 1px dashed #eee; padding-left: 10px; }
-      .st-fn { font-family: monospace; font-weight: bold; font-size: 16px; margin-bottom: 6px; }
-      .st-client { font-size: 13px; }
-      .st-details { width: 30%; font-size: 13px; padding-left: 10px; }
+      .st-fn { font-family: monospace; font-weight: bold; font-size: 15px; margin-bottom: 4px; }
+      .st-client { font-size: 12px; }
+      .st-details { width: 30%; font-size: 12px; padding-left: 10px; }
     `;
     
     const wrapperClass = isCard ? 'sheet-card' : 'sheet-tabular';
