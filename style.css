@@ -234,6 +234,7 @@ input, select, textarea { font-family: inherit; font-size: 1rem; }
 .btn-ghost     { background: transparent;     color: var(--primary);   border-color: transparent; }
 .btn-ghost:hover { background: var(--primary-light); }
 .btn-sm        { padding: 5px 10px; font-size: 0.8rem; }
+.btn-xs        { padding: 3px 6px; font-size: 0.75rem; border-radius: 4px; line-height: 1; }
 .btn-icon      { padding: 6px; min-width: 32px; justify-content: center; }
 .btn:disabled  { opacity: 0.55; cursor: not-allowed; pointer-events: none; }
 

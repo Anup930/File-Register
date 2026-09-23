@@ -9,6 +9,7 @@
 const APPS_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxTpD4rJPS24Y8Luk9TiFz1jVR5suP9QaPGA5vus0Xs1n36r84rdiTsrSaDx09CtgII/exec';
 
 
+
 // ── STATE ─────────────────────────────────────────────────────
 const App = {
   user: null,
